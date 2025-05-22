@@ -59,7 +59,43 @@ from typing import Optional, List, Dict, Union, Any
 class InChemPyMain:
 
 
-    
+        
+
+    @staticmethod
+    def summations_eval(summation_dict, density_dict, calc_dict):
+        '''
+        evaluates custom summations
+
+        inputs:
+            summation_dict = dictionary of summations {name of sum : compiled calculation}
+            density_dict = dictionary of current species concentrations {species : concentration}
+            calc_dict = dictionary of constants and variables for use in calculations
+
+        returns:
+            sums_dict = dictionary of evaluated sum calculations {name of sum : value}
+        '''
+        sums_dict={}
+        full_dict = {**density_dict, **calc_dict}
+        for spec in summation_dict.keys():
+            sums_dict[spec] = (eval(summation_dict[spec], {}, full_dict))
+        return sums_dict
+
+
+    @staticmethod
+    def summations_compile(sums):
+        '''
+        compiles any custom summations
+
+        inputs:
+            sums = list of summations [name of sum, calculation]
+
+        returns:
+            summation_dict = dictionary of summations {name of sum : compiled calculation}
+        '''
+        summation_dict = {}
+        for i in sums:
+            summation_dict[i[0]] = compile(i[1], '<string>', 'eval')
+        return summation_dict
 
     '''
     numba functions to increase speed of mathamatical operations
@@ -122,38 +158,6 @@ class InChemPyMain:
         # Useful if the timestep has to be reduced but an output at a specific interval
         # is still required. A save rate of 1 will save every dt, a save rate of 2 will
         # save every 2*dt
-
-        def summations_compile(sums):
-            '''
-            compiles any custom summations
-
-            inputs:
-                sums = list of summations [name of sum, calculation]
-
-            returns:
-                summation_dict = dictionary of summations {name of sum : compiled calculation}
-            '''
-            summation_dict = {}
-            for i in sums:
-                summation_dict[i[0]] = compile(i[1], '<string>', 'eval')
-            return summation_dict
-
-        def summations_eval(summation_dict, density_dict, calc_dict):
-            '''
-            evaluates custom summations
-
-            inputs:
-                summation_dict = dictionary of summations {name of sum : compiled calculation}
-                density_dict = dictionary of current species concentrations {species : concentration}
-                calc_dict = dictionary of constants and variables for use in calculations
-
-            returns:
-                sums_dict = dictionary of evaluated sum calculations {name of sum : value}
-            '''
-            full_dict = {**density_dict, **calc_dict}
-            for spec in summation_dict.keys():
-                sums_dict[spec] = (eval(summation_dict[spec], {}, full_dict))
-            return sums_dict
 
         def h2o_rh(time, temp, rel_humidity, numba_exp):
             '''
@@ -281,7 +285,7 @@ class InChemPyMain:
 
             # if summations are included they need to be updated to the density dictionary also
             if summations == True:
-                sums_dict = summations_eval(summations_dict, density_dict, calc_dict)
+                sums_dict = self.summations_eval(summations_dict, density_dict, calc_dict)
                 density_dict.update(sums_dict)
 
             # n = time in seconds from midnight for each day
@@ -988,15 +992,14 @@ class InChemPyMain:
         # calculating t0 summations
         summations_dict = {}
         if summations == True:
-            summations_dict = summations_compile(sums)
+            summations_dict = self.summations_compile(sums)
             
             
             if automatically_fix_undefined_species:
                 undefined_dict = undefined_species_dict(summations_dict,density_dict,calc_dict)
                 density_dict.update(undefined_dict)
         
-            sums_dict = {}
-            sums_dict = summations_eval(summations_dict, density_dict, calc_dict)
+            sums_dict = self.summations_eval(summations_dict, density_dict, calc_dict)
             density_dict.update(sums_dict)
 
         if particles == True:

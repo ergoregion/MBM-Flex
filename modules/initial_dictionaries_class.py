@@ -1,4 +1,4 @@
-from .initial_dictionaries import initial_conditions
+from modules.initial_dictionaries import initial_conditions
 
 
 class InititialTxtFile:
