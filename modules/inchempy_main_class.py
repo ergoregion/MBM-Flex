@@ -58,8 +58,160 @@ from typing import Optional, List, Dict, Union, Any
 
 class InChemPyMain:
 
+    def __init__(self, filename, particles, timed_emissions, constrained_file, timed_inputs,
+                 H2O2_dep, O3_dep, adults, children, INCHEM_additional, custom, custom_filename, volume, surface_area,
+                 const_dict):
+        self.particles = particles
+        self.timed_emissions = timed_emissions
 
+        self.species, self.ppool, self.rate_numba, self.reactions_numba = import_all(
+            filename)  # import from MCM download
         
+        self.constrained_file = constrained_file
+        self.INCHEM_additional = INCHEM_additional
+        self.custom = custom
+        self.timed_inputs=timed_inputs
+
+        # Calculate area to volume ratio for surface deposition
+        surfaces_AV, AV = self.AV_calc(volume, surface_area)
+
+        # dictionary for evaluating the reaction rates
+        self.fixed_calc_dict = {
+            'numba_exp': self.numba_exp,
+
+            'numba_log10': self.numba_log10,
+            'numba_sqrt': self.numba_sqrt,
+
+            'PI': math.pi,
+            'AV': AV,
+            'numba_abs': self.numba_abs,
+            'adults': adults,
+            'children': children,
+            'volume': volume}
+
+        self.fixed_calc_dict.update(const_dict)  # add constants from settings to calc_dict
+
+        # If we have surface emissions we need the individual A/V
+        if H2O2_dep is True or O3_dep is True:
+            self.fixed_calc_dict.update(surfaces_AV)
+
+        '''
+        Custom reactions and rates. Those not in the MCM download, the code does not
+        check this so please make sure you are not adding any reactions that already 
+        exist as it will just duplicate them.
+        '''
+        self.sums = []
+        if custom is True:
+            custom_rates, custom_reactions, custom_species, custom_RO2, custom_sums = \
+                custom_import(custom_filename, self.species)
+            # Check that rates/constants/RO2 have not been added as species
+            custom_species = [item for item in custom_species
+                              if item not in (['RO2'] + list(self.fixed_calc_dict.keys()) +
+                                              [name[0] for name in self.rate_numba])]
+            self.species = self.species + custom_species
+            self.rate_numba = self.rate_numba + custom_rates
+            self.reactions_numba = self.reactions_numba + custom_reactions
+            self.ppool = self.ppool + custom_RO2
+            self.sums.extend(custom_sums)
+
+        '''
+        INCHEM reactions and rates that are not included in MCM download.
+        '''
+        if INCHEM_additional is True:
+            INCHEM_species = INCHEM_species_calc(INCHEM_reactions, self.species)
+            self.species = self.species + INCHEM_species
+            self.ppool = self.ppool + INCHEM_RO2
+            self.reactions_numba = self.reactions_numba + INCHEM_reactions
+            self.rate_numba = self.rate_numba + INCHEM_rates
+            self.sums.extend(INCHEM_sums)
+
+        '''
+        Particles
+        '''
+        self.particle_species = []
+        if self.particles is True:
+            # if the full MCM is not being used then the calcuations for TSP and anything involving TSP
+            # will fail so particles can only be used with the full MCM at the moment 04/2020
+            self.particle_species, particle_reactions, particle_vap_dict, part_compile_dict = particle_import()
+            self.species = self.species + self.particle_species  # add particle species to species list
+            self.reactions_numba = reactions_check(self.reactions_numba, particle_reactions, self.species)
+            self.rate_numba = self.rate_numba + [['kacid', '1.5e-32*numba_exp(14770/temp)']]
+            self.fixed_calc_dict.update(particle_vap_dict)
+            if INCHEM_additional is True:
+                # HOMS Chemistry
+                self.reactions_numba, HOMS_species, part_compile_dict, HOMRO2 = HOMS_chemistry(self.reactions_numba,
+                                                                                               part_compile_dict)
+                self.species = self.species + HOMS_species
+                self.ppool = self.ppool + HOMRO2
+                self.fixed_calc_dict['PHOMS'] = 2.11e-7  # HOMS vapour pressure (Torr)
+                self.fixed_calc_dict['PHOMSD'] = 7.6e-13  # HOMS dimer vapour pressure (Torr)
+            self.part_calc_dict = particle_calc_dict(part_compile_dict)
+
+        '''
+        Optional H2O2 and O3 deposition
+        '''
+        if H2O2_dep is True and ("H2O2" in self.species):
+            H2O2_rates, H2O2_reactions = H2O2_deposition()
+            self.reactions_numba = self.reactions_numba + H2O2_reactions
+            self.rate_numba = self.rate_numba + H2O2_rates
+        if O3_dep is True and ("O3" in self.species):
+            O3_rates, O3_reactions = O3_deposition()
+            self.reactions_numba = self.reactions_numba + O3_reactions
+            self.rate_numba = self.rate_numba + O3_rates
+        if adults+children > 0:
+            breath_rates, breath_reactions = breath_emissions(volume)
+            self.reactions_numba = self.reactions_numba + breath_reactions
+            self.rate_numba = self.rate_numba + breath_rates
+
+        self.emission_group = {}
+        if self.timed_emissions is True:
+            timed_reactions, self.emission_group = timed_import(timed_inputs)
+            self.reactions_numba = self.reactions_numba + timed_reactions
+
+        self.reaction_number = []
+        for i in range(len(self.reactions_numba)):  # for assigning within the master array
+            self.reaction_number.append('r%s' % i)
+
+        '''
+        Constrained species, remove from integration
+        '''
+        if constrained_file:
+            _, constrained_variables, _, _ = constraints_import(constrained_file, None, 0)
+            for i in constrained_variables:
+                if i in self.species:
+                    self.species.remove(i)
+
+        # if it's in the calc dict it shouldn't be calculated in any of the integrations
+        for i in self.fixed_calc_dict.keys():
+            if i in self.species:
+                self.species.remove(i)
+
+        # if it's in the calc dict it shouldn't be calculated in any of the integrations
+        for i in self.fixed_calc_dict.keys():
+            for j in self.rate_numba:
+                if j[0] == i:
+                    self.rate_numba.remove(j)
+                    print("%s from custom_input.txt ignored. Defined elsewhere." % i)
+
+        '''
+        Surface deposition
+        '''
+        self.surface_dict = surface_deposition(AV, H2O2_dep, O3_dep)
+        for specie in self.species:
+            if self.particles is True and specie in self.particle_species:
+                self.surface_dict['%s_SURF' % specie] = 0.004*AV
+            elif '%s_SURF' % specie not in self.surface_dict.keys():
+                self.surface_dict['%s_SURF' % specie] = 0
+
+        # creating the master array
+        self.master_array_dict = master_calc(self.reactions_numba, self.species, self.reaction_number, self.particles,
+                                             self.particle_species, self.timed_emissions)
+
+        # compiling the master array
+        self.master_compiled = master_compiler(self.master_array_dict, self.species)
+
+        # Create the jacobian
+        self.dy_dy_dict = construct_jacobian(self.master_array_dict)
 
     @staticmethod
     def summations_eval(summation_dict, density_dict, calc_dict):
@@ -74,12 +226,11 @@ class InChemPyMain:
         returns:
             sums_dict = dictionary of evaluated sum calculations {name of sum : value}
         '''
-        sums_dict={}
+        sums_dict = {}
         full_dict = {**density_dict, **calc_dict}
         for spec in summation_dict.keys():
             sums_dict[spec] = (eval(summation_dict[spec], {}, full_dict))
         return sums_dict
-
 
     @staticmethod
     def summations_compile(sums):
@@ -145,9 +296,30 @@ class InChemPyMain:
     def numba_log10(x):
         return np.log10(x)
 
+    @staticmethod
+    def AV_calc(volume, surface_area):
+        '''
+        Calculates the area to volume ratio for surface deposition
+
+        inputs:
+            volume = volume of the simulated space (cm^3)
+            surface_areas = dictionary of surface areas of surfaces in the space (cm2^)
+
+        outputs:
+            AV_dict = dictionary of surface area to volume ratios (cm^-1)
+            AV = total surface to volume ratio (cm^-1)
+        '''
+        AV = sum(surface_area.values())/volume
+
+        surfaces_AV = {}
+        for key in surface_area:
+            surfaces_AV['AV%s' % key] = surface_area[key]/volume
+
+        return surfaces_AV, AV
+
     def run_inchem(self, filename, particles, INCHEM_additional, custom, rel_humidity,
                    M, const_dict, ACRate_dict, diurnal, city, date, lat, light_type,
-                   light_on_times, glass, volume, initial_condition, 
+                   light_on_times, glass, volume, initial_condition,
                    timed_emissions, timed_inputs, dt, t0,
                    seconds_to_integrate, custom_name, output_graph, output_species,
                    reactions_output, H2O2_dep, O3_dep, adults, children,
@@ -280,11 +452,11 @@ class InChemPyMain:
             '''
             # Update density dictionary
             for i in range(num_species):
-                density_dict[species[i]] = y0[i]
-            density_dict['RO2'] = ppool_density_calc(density_dict, ppool)
+                density_dict[self.species[i]] = y0[i]
+            density_dict['RO2'] = ppool_density_calc(density_dict, self.ppool)
 
             # if summations are included they need to be updated to the density dictionary also
-            if summations == True:
+            if summations is True:
                 sums_dict = self.summations_eval(summations_dict, density_dict, calc_dict)
                 density_dict.update(sums_dict)
 
@@ -309,7 +481,7 @@ class InChemPyMain:
                 secx = 1.0 / (((cosx + self.numba_abs(cosx))/2)+1.0E-30)  # no divison by 0
 
             # updates the relevant dictionary whether lights are on or off
-            if events[0] == True:
+            if events[0] is True:
                 lighting_input.update(indoor_photo_dict)
             else:
                 lighting_input.update(indoor_photo_dict_off)
@@ -322,14 +494,14 @@ class InChemPyMain:
             ACRate_updater(t, ACRate_dict, outdoor_dict)
 
             # diurnal outdoor rates
-            if diurnal == True:
+            if diurnal is True:
                 out_calc_dict["n"] = n
                 out_calc_dict["cosx"] = cosx
                 out_calc_dict["secx"] = secx
                 outdoor_rates_calc(outdoor_dict, outdoor_dict_diurnal, out_calc_dict)
 
             # constrained inputs
-            if constrained_file:
+            if self.constrained_file:
                 constrained_update(t, interp_inputs, constrained_variables, constrained_J, constrained_species,
                                    constrained_out, calc_dict, J_dict, outdoor_dict, constrained_rates, rel_humidity)
 
@@ -340,31 +512,31 @@ class InChemPyMain:
             calc_dict['H2O'] = h2o
 
             # recalculate particle sums
-            if particles == True:
-                particle_dict = particle_calcs(part_calc_dict, density_dict)
+            if self.particles is True:
+                particle_dict = particle_calcs(self.part_calc_dict, density_dict)
                 density_dict.update(particle_dict)
 
             # checks time, if between times set for a forced density change the rate
             # is applied to the specific species
-            if timed_emissions == True:
-                for i, key in enumerate(emission_group.keys()):
-                    if events[i+1] == True:
+            if self.timed_emissions is True:
+                for i, key in enumerate(self.emission_group.keys()):
+                    if events[i+1] is True:
                         timed_dict[key] = 1
                     else:
                         timed_dict[key] = 0
 
             # recalculate reaction rates
-            reaction_eval(reaction_rate_dict, reaction_number, J_dict, calc_dict,
+            reaction_eval(reaction_rate_dict, self.reaction_number, J_dict, calc_dict,
                           density_dict, dt, reaction_compiled_dict,
-                          outdoor_dict, surface_dict,
+                          outdoor_dict, self.surface_dict,
                           timed_dict)
 
             # evaluate the mater array to recalculate concentrations
-            dy_dict = dy_calc(master_compiled, reaction_rate_dict, calc_dict, density_dict,
-                              outdoor_dict, surface_dict, species, timed_dict)
+            dy_dict = dy_calc(self.master_compiled, reaction_rate_dict, calc_dict, density_dict,
+                              outdoor_dict, self.surface_dict, self.species, timed_dict)
 
             # output the new concentration values
-            dy = [dy_dict[i] for i in species]
+            dy = [dy_dict[i] for i in self.species]
             return dy
 
         def dydy(t, y0, events):
@@ -381,12 +553,12 @@ class InChemPyMain:
             '''
             # Update density dictionary
             for i in range(num_species):
-                density_dict[species[i]] = y0[i]
-            density_dict['RO2'] = ppool_density_calc(density_dict, ppool)
+                density_dict[self.species[i]] = y0[i]
+            density_dict['RO2'] = ppool_density_calc(density_dict, self.ppool)
 
             # if summations are included they need to be updated to the density dictionary also
-            if summations == True:
-                sums_dict = summations_eval(summations_dict, density_dict, calc_dict)
+            if summations is True:
+                sums_dict = self.summations_eval(summations_dict, density_dict, calc_dict)
                 density_dict.update(sums_dict)
 
             # n = time in seconds from midnight for each day
@@ -410,7 +582,7 @@ class InChemPyMain:
                 secx = 1.0 / (((cosx + self.numba_abs(cosx))/2)+1.0E-30)  # no division by 0
 
             # updates the relevant dictionary whether lights are on or off
-            if events[0] == True:
+            if events[0] is True:
                 lighting_input.update(indoor_photo_dict)
             else:
                 lighting_input.update(indoor_photo_dict_off)
@@ -423,14 +595,14 @@ class InChemPyMain:
             ACRate_updater(t, ACRate_dict, outdoor_dict)
 
             # diurnal outdoor rates
-            if diurnal == True:
+            if diurnal is True:
                 out_calc_dict["n"] = n
                 out_calc_dict["cosx"] = cosx
                 out_calc_dict["secx"] = secx
                 outdoor_rates_calc(outdoor_dict, outdoor_dict_diurnal, out_calc_dict)
 
             # constrained inputs
-            if constrained_file:
+            if self.constrained_file:
                 constrained_update(t, interp_inputs, constrained_variables, constrained_J, constrained_species,
                                    constrained_out, calc_dict, J_dict, outdoor_dict, constrained_rates, rel_humidity)
 
@@ -441,27 +613,27 @@ class InChemPyMain:
             calc_dict['H2O'] = h2o
 
             # recalculate particle sums
-            if particles == True:
-                particle_dict = particle_calcs(part_calc_dict, density_dict)
+            if self.particles is True:
+                particle_dict = particle_calcs(self.part_calc_dict, density_dict)
                 density_dict.update(particle_dict)
 
             # checks time, if between times set for a forced density change the rate
             # is applied to the specific species
-            if timed_emissions == True:
-                for i, key in enumerate(emission_group.keys()):
-                    if events[i+1] == True:
+            if self.timed_emissions is True:
+                for i, key in enumerate(self.emission_group.keys()):
+                    if events[i+1] is True:
                         timed_dict[key] = 1
                     else:
                         timed_dict[key] = 0
 
             # recalculate reaction rates
-            reaction_eval(reaction_rate_dict, reaction_number, J_dict, calc_dict, density_dict,
+            reaction_eval(reaction_rate_dict, self.reaction_number, J_dict, calc_dict, density_dict,
                           dt, reaction_compiled_dict, outdoor_dict,
-                          surface_dict, timed_dict)
+                          self.surface_dict, timed_dict)
 
             # recalculate jacobian
-            dydy_jac = dy_dy_calc(dy_dy_dict, J_dict, calc_dict, density_dict, species,
-                                  outdoor_dict, surface_dict, num_species,
+            dydy_jac = dy_dy_calc(self.dy_dy_dict, J_dict, calc_dict, density_dict, self.species,
+                                  outdoor_dict, self.surface_dict, num_species,
                                   timed_dict, reaction_rate_dict)
             return dydy_jac
 
@@ -502,7 +674,7 @@ class InChemPyMain:
 
             calculated_output = {}
             calculated_output['RO2'] = []
-            if particles == True:
+            if self.particles is True:
                 calculated_output['TSP'] = []
                 calculated_output['acidsum'] = []
                 calculated_output['TSPx'] = []
@@ -517,14 +689,14 @@ class InChemPyMain:
                 calculated_output[i] = []
             for i in outdoor_dict:
                 calculated_output[i] = []
-            if summations == True:
+            if summations is True:
                 for i in sums_dict:
                     calculated_output[i] = []
 
-            if reactions_output == True:
+            if reactions_output is True:
                 for i in reaction_rate_dict:
                     calculated_output[i] = []  # reaction rates
-                for i in surface_dict:
+                for i in self.surface_dict:
                     calculated_output[i] = []  # surface deposition values
 
             for i in calc_dict:
@@ -562,7 +734,7 @@ class InChemPyMain:
                         calculated_output[i].append(reactivity_dict[i])
                     for i in production_dict:
                         calculated_output[i].append(production_dict[i])
-                    if particles == True:
+                    if self.particles is True:
                         calculated_output['TSP'].append(density_dict['TSP'])
                         calculated_output['acidsum'].append(density_dict['acidsum'])
                         calculated_output['TSPx'].append(density_dict['TSPx'])
@@ -575,14 +747,14 @@ class InChemPyMain:
                         calculated_output[i].append(J_dict[i])
                     for i in outdoor_dict:
                         calculated_output[i].append(outdoor_dict[i])
-                    if summations == True:
+                    if summations is True:
                         for i in sums_dict:
                             calculated_output[i].append(density_dict[i])
-                    if reactions_output == True:
+                    if reactions_output is True:
                         for i in reaction_rate_dict:
                             calculated_output[i].append(reaction_rate_dict[i])
-                        for i in surface_dict:
-                            calculated_output[i].append(surface_dict[i])
+                        for i in self.surface_dict:
+                            calculated_output[i].append(self.surface_dict[i])
                     for i in calc_dict:
                         if "numba" not in i:
                             calculated_output[i].append(calc_dict[i])
@@ -610,7 +782,7 @@ class InChemPyMain:
                     break
             events.append(condition)
 
-            if timed_emissions == True:
+            if timed_emissions is True:
                 for emission in emission_group.values():
                     if emission[0] <= t < emission[1]:
                         condition = True
@@ -620,32 +792,12 @@ class InChemPyMain:
 
             return events
 
-        def AV_calc(volume, surface_area):
-            '''
-            Calculates the area to volume ratio for surface deposition
-
-            inputs:
-                volume = volume of the simulated space (cm^3)
-                surface_areas = dictionary of surface areas of surfaces in the space (cm2^)
-
-            outputs:
-                AV_dict = dictionary of surface area to volume ratios (cm^-1)
-                AV = total surface to volume ratio (cm^-1)
-            '''
-            AV = sum(surface_area.values())/volume
-
-            surfaces_AV = {}
-            for key in surface_area:
-                surfaces_AV['AV%s' % key] = surface_area[key]/volume
-
-            return surfaces_AV, AV
-
         start_time = timing.time()  # program start time
 
         # constrained species
         # changes start and end time of simulation to be only within the constrained inputs
-        if constrained_file:
-            interp_inputs, constrained_variables, seconds_to_integrate, t0 = constraints_import(constrained_file,
+        if self.constrained_file:
+            interp_inputs, constrained_variables, seconds_to_integrate, t0 = constraints_import(self.constrained_file,
                                                                                                 None, dt)
 
         # setting integration envelopes and integration parameters
@@ -665,9 +817,9 @@ class InChemPyMain:
         for light_envelopes in light_on_times:
             integration_envelopes.extend(light_envelopes)
 
-        if timed_emissions == True:
-            for species in timed_inputs:
-                for sublist in timed_inputs[species]:
+        if self.timed_emissions is True:
+            for self.species in self.timed_inputs:
+                for sublist in self.timed_inputs[self.species]:
                     integration_envelopes.extend(sublist[:-1])
 
         # remove repeated values
@@ -710,112 +862,32 @@ class InChemPyMain:
 
         h2o, rh = h2o_rh(t0, temp, rel_humidity, self.numba_exp)
 
-        species, ppool, rate_numba, reactions_numba = import_all(filename)  # import from MCM download
-
         pi = math.pi
-
-        # Calculate area to volume ratio for surface deposition
-        surfaces_AV, AV = AV_calc(volume, surface_area)
 
         # dictionary for evaluating the reaction rates
         calc_dict = {'M': M,
-                     'numba_exp': self.numba_exp,
+
                      'temp': temp,
-                     'numba_log10': self.numba_log10,
-                     'numba_sqrt': self.numba_sqrt,
+
+
                      'H2O': h2o,
-                     'PI': pi,
-                     'AV': AV,
-                     'numba_abs': self.numba_abs,
-                     'adults': adults,
-                     'children': children,
-                     'volume': volume}
 
-        calc_dict.update(const_dict)  # add constants from settings to calc_dict
 
-        # If we have surface emissions we need the individual A/V
-        if H2O2_dep == True or O3_dep == True:
-            calc_dict.update(surfaces_AV)
 
-        '''
-        Custom reactions and rates. Those not in the MCM download, the code does not
-        check this so please make sure you are not adding any reactions that already 
-        exist as it will just duplicate them.
-        '''
-        sums = []
-        if custom == True:
-            custom_rates, custom_reactions, custom_species, custom_RO2, sums = \
-                custom_import(custom_filename, species)
-            # Check that rates/constants/RO2 have not been added as species
-            custom_species = [item for item in custom_species
-                              if item not in (['RO2'] + list(calc_dict.keys()) +
-                                              [name[0] for name in rate_numba])]
-            species = species + custom_species
-            rate_numba = rate_numba + custom_rates
-            reactions_numba = reactions_numba + custom_reactions
-            ppool = ppool + custom_RO2
 
-        '''
-        INCHEM reactions and rates that are not included in MCM download.
-        '''
-        if INCHEM_additional == True:
-            INCHEM_species = INCHEM_species_calc(INCHEM_reactions, species)
-            species = species + INCHEM_species
-            ppool = ppool + INCHEM_RO2
-            reactions_numba = reactions_numba + INCHEM_reactions
-            rate_numba = rate_numba + INCHEM_rates
-            sums.extend(INCHEM_sums)
 
-        '''
-        Particles
-        '''
-        particle_species = []
-        HOMS_species = []
-        if particles == True:
-            # if the full MCM is not being used then the calcuations for TSP and anything involving TSP
-            # will fail so particles can only be used with the full MCM at the moment 04/2020
-            particle_species, particle_reactions, particle_vap_dict, part_compile_dict = particle_import()
-            species = species + particle_species  # add particle species to species list
-            reactions_numba = reactions_check(reactions_numba, particle_reactions, species)
-            rate_numba = rate_numba + [['kacid', '1.5e-32*numba_exp(14770/temp)']]
-            calc_dict.update(particle_vap_dict)
-            if INCHEM_additional == True:
-                # HOMS Chemistry
-                reactions_numba, HOMS_species, part_compile_dict, HOMRO2 = HOMS_chemistry(reactions_numba,
-                                                                                          part_compile_dict)
-                species = species + HOMS_species
-                ppool = ppool + HOMRO2
-                calc_dict['PHOMS'] = 2.11e-7  # HOMS vapour pressure (Torr)
-                calc_dict['PHOMSD'] = 7.6e-13  # HOMS dimer vapour pressure (Torr)
-            part_calc_dict = particle_calc_dict(part_compile_dict)
+                     }
 
-        '''
-        Optional H2O2 and O3 deposition
-        '''
-        if H2O2_dep == True and ("H2O2" in species):
-            H2O2_rates, H2O2_reactions = H2O2_deposition()
-            reactions_numba = reactions_numba + H2O2_reactions
-            rate_numba = rate_numba + H2O2_rates
-        if O3_dep == True and ("O3" in species):
-            O3_rates, O3_reactions = O3_deposition()
-            reactions_numba = reactions_numba + O3_reactions
-            rate_numba = rate_numba + O3_rates
-        if adults+children > 0:
-            breath_rates, breath_reactions = breath_emissions(volume)
-            reactions_numba = reactions_numba + breath_reactions
-            rate_numba = rate_numba + breath_rates
+        calc_dict.update(self.fixed_calc_dict)
 
         '''
         timed concentrations
         '''
 
         timed_dict = {}
-        emission_group = {}
-        if timed_emissions == True:
-            timed_reactions, emission_group = timed_import(timed_inputs)
-            reactions_numba = reactions_numba + timed_reactions
-
-            for key, value in emission_group.items():
+        self.emission_group = {}
+        if self.timed_emissions is True:
+            for key, value in self.emission_group.items():
                 if value[0] <= t0 <= value[1]:
                     timed_dict[key] = 1
                 else:
@@ -824,34 +896,20 @@ class InChemPyMain:
         '''
         Constrained species, remove from integration
         '''
-        if constrained_file:
+        if self.constrained_file:
             constrained_species = []
             for i in constrained_variables:
-                if i in species:
+                if i in self.species:
                     constrained_species.append(i)
                     calc_dict[i] = float(interp_inputs[i](t0))
-                    species.remove(i)
 
         '''
         Additional clean up, checking for summations from custom inputs
         '''
         summations = False
-        if custom == True or INCHEM_additional == True:
-            if len(sums) >= 1:
+        if self.custom is True or self.INCHEM_additional is True:
+            if len(self.sums) >= 1:
                 summations = True
-
-        reaction_number = []
-        for i in range(len(reactions_numba)):  # for assigning within the master array
-            reaction_number.append('r%s' % i)
-
-        # if it's in the calc dict it shouldn't be calculated in any of the integrations
-        for i in calc_dict.keys():
-            if i in species:
-                species.remove(i)
-            for j in rate_numba:
-                if j[0] == i:
-                    rate_numba.remove(j)
-                    print("%s from custom_input.txt ignored. Defined elsewhere." % i)
 
         '''
         Photolysis
@@ -919,7 +977,7 @@ class InChemPyMain:
         '''
         MOCCIE inputs updating photolysis
         '''
-        if constrained_file:
+        if self.constrained_file:
             constrained_J = []
             for i in constrained_variables:
                 if i in J_dict.keys():
@@ -938,11 +996,11 @@ class InChemPyMain:
                          "secx": secx}
 
         # Outdoor dictionaries
-        outdoor_dict = outdoor_rates(particles, species)
+        outdoor_dict = outdoor_rates(self.particles, self.species)
         # ACRate update
         ACRate_updater(t0, ACRate_dict, outdoor_dict)
         # Diurnal variation
-        if diurnal == True:
+        if diurnal is True:
             outdoor_dict_diurnal = outdoor_rates_diurnal(city)
             outdoor_rates_calc(outdoor_dict, outdoor_dict_diurnal, out_calc_dict)
             # diurnal rates will overide static rates if species shown in both
@@ -950,7 +1008,7 @@ class InChemPyMain:
         '''
         constrained inputs updating outdoor concentrations
         '''
-        if constrained_file:
+        if self.constrained_file:
             constrained_out = []
             for i in constrained_variables:
                 if i in outdoor_dict.keys():
@@ -958,27 +1016,17 @@ class InChemPyMain:
                     constrained_out.append(i)
 
         '''
-        Surface deposition
-        '''
-        surface_dict = surface_deposition(AV, H2O2_dep, O3_dep)
-        for specie in species:
-            if particles == True and specie in particle_species:
-                surface_dict['%s_SURF' % specie] = 0.004*AV
-            elif '%s_SURF' % specie not in surface_dict.keys():
-                surface_dict['%s_SURF' % specie] = 0
-
-        '''
         importing initial concentrations
         '''
-        density_dict, calc_dict = initial_condition.initial_conditions(M, species,
-                                                     rate_numba, calc_dict, particles,
-                                                     t0)
-        density_dict['RO2'] = ppool_density_calc(density_dict, ppool)
+        density_dict, calc_dict = initial_condition.initial_conditions(M, self.species,
+                                                                       self.rate_numba, calc_dict, self.particles,
+                                                                       t0)
+        density_dict['RO2'] = ppool_density_calc(density_dict, self.ppool)
 
         '''
         MOCCIE inputs updating initial concentrations
         '''
-        if constrained_file:
+        if self.constrained_file:
             constrained_rates = []
             for i in constrained_variables:
                 if i not in constrained_species + constrained_J + constrained_out + \
@@ -991,57 +1039,45 @@ class InChemPyMain:
 
         # calculating t0 summations
         summations_dict = {}
-        if summations == True:
-            summations_dict = self.summations_compile(sums)
-            
-            
+        if summations is True:
+            summations_dict = self.summations_compile(self.sums)
+
             if automatically_fix_undefined_species:
-                undefined_dict = undefined_species_dict(summations_dict,density_dict,calc_dict)
+                undefined_dict = undefined_species_dict(summations_dict, density_dict, calc_dict)
                 density_dict.update(undefined_dict)
-        
+
             sums_dict = self.summations_eval(summations_dict, density_dict, calc_dict)
             density_dict.update(sums_dict)
 
-        if particles == True:
-                
+        if self.particles is True:
+
             if automatically_fix_undefined_species:
-                undefined_dict = undefined_species_dict(part_calc_dict,density_dict,calc_dict)
+                undefined_dict = undefined_species_dict(self.part_calc_dict, density_dict, calc_dict)
                 density_dict.update(undefined_dict)
 
-            particle_dict = particle_calcs(part_calc_dict, density_dict)
+            particle_dict = particle_calcs(self.part_calc_dict, density_dict)
             density_dict.update(particle_dict)
 
         '''
         Calculating the reaction rates and compiling the master array of ODEs
         '''
-        num_species = len(species)  # some calculations ask for the number of species
+        num_species = len(self.species)  # some calculations ask for the number of species
         # better to calculate it once rather than every time
 
-        reaction_compiled_dict = reaction_rate_compile(reactions_numba, reaction_number)
+        reaction_compiled_dict = reaction_rate_compile(self.reactions_numba, self.reaction_number)
 
-            
         if automatically_fix_undefined_species:
-            full_dict={**J_dict,**density_dict,**outdoor_dict,**surface_dict,**timed_dict}
-            undefined_dict = undefined_species_dict(reaction_compiled_dict,full_dict,calc_dict)
+            full_dict = {**J_dict, **density_dict, **outdoor_dict, **self.surface_dict, **timed_dict}
+            undefined_dict = undefined_species_dict(reaction_compiled_dict, full_dict, calc_dict)
             density_dict.update(undefined_dict)
 
         reaction_rate_dict = {}
-        reaction_eval(reaction_rate_dict, reaction_number, J_dict, calc_dict, density_dict,
+        reaction_eval(reaction_rate_dict, self.reaction_number, J_dict, calc_dict, density_dict,
                       dt, reaction_compiled_dict, outdoor_dict,
-                      surface_dict, timed_dict)
-
-        # creating the master array
-        master_array_dict = master_calc(reactions_numba, species, reaction_number, particles,
-                                        particle_species, timed_emissions)
-
-        # compiling the master array
-        master_compiled = master_compiler(master_array_dict, species)
-
-        # Create the jacobian
-        dy_dy_dict = construct_jacobian(master_array_dict)
+                      self.surface_dict, timed_dict)
 
         # reactivity and production calculations, details in the reactivity.py script
-        reactivity_compiled, production_compiled = reactivity_summation(master_array_dict)
+        reactivity_compiled, production_compiled = reactivity_summation(self.master_array_dict)
         reactivity_dict = {}
         reactivity_calc(reactivity_dict, reactivity_compiled, reaction_rate_dict, calc_dict,
                         density_dict)
@@ -1056,7 +1092,7 @@ class InChemPyMain:
         # can then be used to repopulate the dictionaries with updated values
         y0 = [[] for i in range(num_species)]
         for i in range(num_species):
-            y0[i] = density_dict[species[i]]
+            y0[i] = density_dict[self.species[i]]
 
         # Create arrays for storing the output.
         n_new = np.array([[y0[i]] for i in range(num_species)])
@@ -1065,7 +1101,7 @@ class InChemPyMain:
         iter_time_tot = [timing.time()-start_time]
         calculated_output_tot = {}
         calculated_output_tot['RO2'] = [density_dict['RO2']]
-        if particles == True:
+        if self.particles is True:
             calculated_output_tot['TSP'] = [density_dict['TSP']]
             calculated_output_tot['acidsum'] = [density_dict['acidsum']]
             calculated_output_tot['TSPx'] = [density_dict['TSPx']]
@@ -1080,15 +1116,15 @@ class InChemPyMain:
             calculated_output_tot[i] = [J_dict[i]]
         for i in outdoor_dict:
             calculated_output_tot[i] = [outdoor_dict[i]]
-        if summations == True:
+        if summations is True:
             for i in sums_dict:
                 calculated_output_tot[i] = [density_dict[i]]
 
-        if reactions_output == True:
+        if reactions_output is True:
             for i in reaction_rate_dict:
                 calculated_output_tot[i] = [reaction_rate_dict[i]]  # reaction rates
-            for i in surface_dict:
-                calculated_output_tot[i] = [surface_dict[i]]  # surface deposition values
+            for i in self.surface_dict:
+                calculated_output_tot[i] = [self.surface_dict[i]]  # surface deposition values
 
         for i in calc_dict:
             if "numba" not in i:
@@ -1106,7 +1142,7 @@ class InChemPyMain:
                 print('Integration to', end_time)
                 n_new_in = n_new[:, -1]
                 dt_out_in = dt_out[-1]
-                events = event_creator(dt_out_in, light_on_times, timed_emissions, emission_group)
+                events = event_creator(dt_out_in, light_on_times, self.timed_emissions, self.emission_group)
                 dt_out_temp, n_new_temp, iters, ret, iter_time, calculated_output =\
                     integrate_function(iters, end_time, n_new_in, dt_out_in, ret, save_rate,
                                        num_species, total_iter, dt, events)
@@ -1117,9 +1153,7 @@ class InChemPyMain:
                 for x in calculated_output:
                     calculated_output_tot[x].extend(calculated_output[x])
 
-        output_data = pd.DataFrame(np.transpose(n_new), columns=species, index=dt_out)
+        output_data = pd.DataFrame(np.transpose(n_new), columns=self.species, index=dt_out)
         output_data = output_data.join(pd.DataFrame(calculated_output_tot, index=dt_out))
 
-        integration_times = pd.DataFrame(np.transpose(iter_time_tot), index=dt_out)
-
-        return output_data, integration_times
+        return output_data, iter_time_tot
