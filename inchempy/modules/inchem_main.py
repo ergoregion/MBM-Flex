@@ -833,11 +833,11 @@ def run_inchem(filename, particles, INCHEM_additional, custom, rel_humidity,
     '''
     Optional H2O2 and O3 deposition
     '''
-    if H2O2_dep == True:
+    if H2O2_dep == True and ("H2O2" in species):
         H2O2_rates, H2O2_reactions = H2O2_deposition()
         reactions_numba = reactions_numba + H2O2_reactions
         rate_numba = rate_numba + H2O2_rates
-    if O3_dep == True:
+    if O3_dep == True  and ("O3" in species):
         O3_rates, O3_reactions = O3_deposition()
         reactions_numba = reactions_numba + O3_reactions
         rate_numba = rate_numba + O3_rates
