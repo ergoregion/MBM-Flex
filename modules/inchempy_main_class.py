@@ -64,13 +64,13 @@ class InChemPyMain:
         self.particles = particles
         self.timed_emissions = timed_emissions
 
-        self.species, self.ppool, self.rate_numba, self.reactions_numba = import_all(
-            filename)  # import from MCM download
+        # import from MCM download
+        self.species, self.ppool, self.rate_numba, self.reactions_numba = import_all(filename)  
         
         self.constrained_file = constrained_file
         self.INCHEM_additional = INCHEM_additional
         self.custom = custom
-        self.timed_inputs=timed_inputs
+        self.timed_inputs = timed_inputs
 
         # Calculate area to volume ratio for surface deposition
         surfaces_AV, AV = self.AV_calc(volume, surface_area)
@@ -212,6 +212,7 @@ class InChemPyMain:
 
         # Create the jacobian
         self.dy_dy_dict = construct_jacobian(self.master_array_dict)
+
 
     @staticmethod
     def summations_eval(summation_dict, density_dict, calc_dict):
@@ -866,16 +867,8 @@ class InChemPyMain:
 
         # dictionary for evaluating the reaction rates
         calc_dict = {'M': M,
-
                      'temp': temp,
-
-
                      'H2O': h2o,
-
-
-
-
-
                      }
 
         calc_dict.update(self.fixed_calc_dict)

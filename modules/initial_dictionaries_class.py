@@ -22,6 +22,9 @@ class InitialDataFrame:
     in_data = None
     index_import = -1
 
+    def __init__(self, dataframe):
+        self.in_data = dataframe
+
     def initial_conditions(self, M, species, rate_numba, calc_dict, particles, t0):
         density_dict = {}
         for i in species:
