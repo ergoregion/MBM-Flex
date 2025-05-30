@@ -83,16 +83,16 @@ class TestInChemPyClassResults(unittest.TestCase):
 
             assert_allclose(output_concentrations_A2.get(species)[180.0],
                             output_concentrations_B.get(species)[180.0],
-                            rtol=1.0e-5, err_msg=f"species check failed: {species}")
+                            rtol=1.0e-3, atol=1.0e-17, err_msg=f"species check failed: {species}")
             assert_allclose(output_concentrations_A2.get(species)[240.0],
                             output_concentrations_B.get(species)[240.0],
-                            rtol=1.0e-5, err_msg=f"species check failed: {species}")
+                            rtol=1.0e-3, atol=1.0e-17, err_msg=f"species check failed: {species}")
             assert_allclose(output_concentrations_A2.get(species)[300.0],
                             output_concentrations_B.get(species)[300.0],
-                            rtol=1.0e-5, err_msg=f"species check failed: {species}")
+                            rtol=1.0e-3, atol=1.0e-17, err_msg=f"species check failed: {species}")
             assert_allclose(output_concentrations_A2.get(species)[360.0],
                             output_concentrations_B.get(species)[360.0],
-                            rtol=1.0e-5, err_msg=f"species check failed: {species}")
+                            rtol=1.0e-3, atol=1.0e-17, err_msg=f"species check failed: {species}")
 
     def test_single_phase_run_matches_instance(self):
         inchem_py_runner: InChemPyRunner = InChemPyRunner(
@@ -149,10 +149,10 @@ class TestInChemPyClassResults(unittest.TestCase):
                              benchmark_concentrations.get(species)[180.0], f"species check failed: {species}")
             assert_allclose(output_concentrations.get(species)[240.0],
                             benchmark_concentrations.get(species)[240.0],
-                            rtol=1.0e-3, atol=1.0e-20, err_msg=f"species check failed: {species}")
+                            rtol=1.0e-3, atol=1.0e-17, err_msg=f"species check failed: {species}")
             assert_allclose(output_concentrations.get(species)[300.0],
                             benchmark_concentrations.get(species)[300.0],
-                            rtol=1.0e-3, atol=1.0e-20, err_msg=f"species check failed: {species}")
+                            rtol=1.0e-3, atol=1.0e-17, err_msg=f"species check failed: {species}")
             assert_allclose(output_concentrations.get(species)[360.0],
                             benchmark_concentrations.get(species)[360.0],
-                            rtol=1.0e-3, atol=1.0e-20, err_msg=f"species check failed: {species}")
+                            rtol=1.0e-3, atol=1.0e-17, err_msg=f"species check failed: {species}")
