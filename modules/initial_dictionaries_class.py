@@ -26,7 +26,7 @@ class InitialDataFrame:
         density_dict = {}
         for i in species:
             try:
-                density_dict[i] = self.in_data.loc[self.index_import, i]
+                density_dict[i] = self.in_data[i].iloc[self.index_import]
             except KeyError:
                 # if new species added since imported run set it to 0
                 density_dict[i] = 0
