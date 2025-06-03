@@ -12,7 +12,10 @@ class InititialTxtFile:
 
 
 class InitialPickleFile:
-    path = None
+    path: str = None
+
+    def __init__(self, path: str):
+        self.path = path
 
     def initial_conditions(self, M, species, rate_numba, calc_dict, particles, t0):
         return initial_conditions(None, M, species, rate_numba, calc_dict, particles, True, t0, self.path)
@@ -20,7 +23,6 @@ class InitialPickleFile:
 
 class InitialDataFrame:
     in_data = None
-    index_import = -1
 
     def __init__(self, dataframe):
         self.in_data = dataframe
@@ -28,11 +30,7 @@ class InitialDataFrame:
     def initial_conditions(self, M, species, rate_numba, calc_dict, particles, t0):
         density_dict = {}
         for i in species:
-            try:
-                density_dict[i] = self.in_data[i].iloc[self.index_import]
-            except KeyError:
-                # if new species added since imported run set it to 0
-                density_dict[i] = 0
+            density_dict[i] = self.in_data[i].loc[t0]
 
         if particles and 'SEED_1' not in density_dict:
             density_dict['SEED_1'] = 2.09e10
