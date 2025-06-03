@@ -318,19 +318,15 @@ class InChemPyMain:
 
         return surfaces_AV, AV
 
-    def run_inchem(self, filename, particles, INCHEM_additional, custom, rel_humidity,
-                   M, const_dict, ACRate_dict, diurnal, city, date, lat, light_type,
-                   light_on_times, glass, volume, initial_condition,
-                   timed_emissions, timed_inputs, dt, t0,
-                   seconds_to_integrate, custom_name, output_graph, output_species,
-                   reactions_output, H2O2_dep, O3_dep, adults, children,
-                   surface_area, settings_file, temperatures, spline, custom_filename,
-                   constrained_file, automatically_fix_undefined_species=False):
-
-        save_rate = 1  # sets the rate at which outputs are saved within the integrator.
-        # Useful if the timestep has to be reduced but an output at a specific interval
-        # is still required. A save rate of 1 will save every dt, a save rate of 2 will
-        # save every 2*dt
+    def run_inchem(self, rel_humidity,
+                   M, ACRate_dict, diurnal, city, date, lat, light_type,
+                   light_on_times, glass, initial_condition,
+                   dt, t0,
+                   seconds_to_integrate,
+                   reactions_output,
+                   temperatures, spline,
+                   automatically_fix_undefined_species=False,
+                   save_rate = 1):
 
         def h2o_rh(time, temp, rel_humidity, numba_exp):
             '''

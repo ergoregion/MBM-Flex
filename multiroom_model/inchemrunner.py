@@ -12,6 +12,12 @@ class InChemPyRunner:
 
     """
 
+    # sets the rate at which outputs are saved within the integrator.
+    # Useful if the timestep has to be reduced but an output at a specific interval
+    # is still required. A save rate of 1 will save every dt, a save rate of 2 will
+    # save every 2*dt
+    save_rate = 1
+
     def __init__(self,
                  filename: str = 'mcm_v331.fac',
                  particles: bool = True,
@@ -39,7 +45,6 @@ class InChemPyRunner:
                  timed_inputs: Optional[Dict[str, List[List[Union[int, float]]]]] = None,
                  constrained_file: Optional[str] = None,
                  dt: int = 60,
-                 
                  custom_name: str = "Bergen_urban",
                  reactions_output: bool = True,
                  output_graph: bool = True,
@@ -165,7 +170,7 @@ class InChemPyRunner:
                                    self.timed_inputs, self.H2O2_dep, self.O3_dep, self.adults, self.children,
                                    self.INCHEM_additional, self.custom, self.custom_filename, self.volume,
                                    self.surface_area, self.const_dict)
- 
+
     def species(self) -> List[str]:
         return self.runner.species
 
@@ -190,14 +195,13 @@ class InChemPyRunner:
         @param M Number density of air in molecules/cm³.
         """
 
-        return self.runner.run_inchem(self.filename, self.particles, self.INCHEM_additional, self.custom, rel_humidity,
-                                      M, self.const_dict, self.ACRate, self.diurnal, self.city, self.date, self.lat,
+        return self.runner.run_inchem(rel_humidity,
+                                      M, self.ACRate, self.diurnal, self.city, self.date, self.lat,
                                       self.light_type,
-                                      self.light_on_times, self.glass, self.volume, initial_conditions,
-                                      self.timed_emissions, self.timed_inputs, self.dt, t0,
-                                      seconds_to_integrate, self.custom_name, self.output_graph, self.output_species,
-                                      self.reactions_output, self.H2O2_dep, self.O3_dep, self.adults,
-                                      self.children, self.surface_area, self.settings_file, self.temperatures, self.spline,
-                                      self.custom_filename,
-                                      self.constrained_file,
-                                      self.automatically_fix_undefined_species)
+                                      self.light_on_times, self.glass, initial_conditions,
+                                      self.dt, t0,
+                                      seconds_to_integrate,
+                                      self.reactions_output,
+                                      self.temperatures, self.spline,
+                                      self.automatically_fix_undefined_species,
+                                      self.save_rate)
