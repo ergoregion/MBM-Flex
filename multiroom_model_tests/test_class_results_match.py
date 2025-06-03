@@ -16,8 +16,24 @@ class TestInChemPyClassResults(unittest.TestCase):
     #
     #    inchem_py_instance.run()
 
+    #def test_run_inchem_py_to_get_results(self):
+    #    inchem_py_instance: InChemPyInstance = InChemPyInstance(
+    #        particles=False,
+    #        INCHEM_additional=False,
+    #        seconds_to_integrate=180,
+    #        output_graph=False)
+    #    inchem_py_instance.run()
+    #    inchem_py_instance = InChemPyInstance(
+    #        particles=False,
+    #        INCHEM_additional=False,
+    #        initials_from_run=True,
+    #        t0=180,
+    #        seconds_to_integrate=180,
+    #        output_graph=False)
+    #    inchem_py_instance.run()
+
     def benchmark_results(self):
-        with open('multiroom_model_tests/test_run_inchem_py_to_get_results.pickle','rb') as file:
+        with open('multiroom_model_tests/test_run_inchem_py_to_get_results.pickle', 'rb') as file:
             result = pickle.load(file)
         return result
 
@@ -156,3 +172,40 @@ class TestInChemPyClassResults(unittest.TestCase):
             assert_allclose(output_concentrations.get(species)[360.0],
                             benchmark_concentrations.get(species)[360.0],
                             rtol=1.0e-3, atol=1.0e-17, err_msg=f"species check failed: {species}")
+
+    def test_double_phase_run_matches_double_phase_instance(self):
+        inchem_py_runner: InChemPyRunner = InChemPyRunner(
+            particles=False,
+            INCHEM_additional=False,
+            output_graph=False)
+
+        initial_conditions = InititialTxtFile('initial_concentrations.txt')
+
+        interim_concentrations, _ = inchem_py_runner.run(
+            initial_conditions=initial_conditions, seconds_to_integrate=180)
+        output_concentrations, _ = inchem_py_runner.run(
+            initial_conditions=InitialDataFrame(interim_concentrations), t0=180, seconds_to_integrate=180)
+
+        with open('multiroom_model_tests/run_0_to_180.pickle', 'rb') as file:
+            benchmark_1 = pickle.load(file)
+
+        with open('multiroom_model_tests//run_180_to_360.pickle', 'rb') as file:
+            benchamark_2 = pickle.load(file)
+
+        for species in inchem_py_runner.species():
+            self.assertEqual(interim_concentrations.get(species)[0.0],
+                             benchmark_1.get(species)[0.0], f"species check failed: {species}")
+            self.assertEqual(interim_concentrations.get(species)[60.0],
+                             benchmark_1.get(species)[60.0], f"species check failed: {species}")
+            self.assertEqual(interim_concentrations.get(species)[120.0],
+                             benchmark_1.get(species)[120.0], f"species check failed: {species}")
+            self.assertEqual(interim_concentrations.get(species)[180.0],
+                             benchmark_1.get(species)[180.0], f"species check failed: {species}")
+            self.assertEqual(output_concentrations.get(species)[180.0],
+                             benchamark_2.get(species)[180.0], f"species check failed: {species}")
+            self.assertEqual(output_concentrations.get(species)[240.0],
+                             benchamark_2.get(species)[240.0], f"species check failed: {species}")
+            self.assertEqual(output_concentrations.get(species)[300.0],
+                             benchamark_2.get(species)[300.0], f"species check failed: {species}")
+            self.assertEqual(output_concentrations.get(species)[360.0],
+                             benchamark_2.get(species)[360.0], f"species check failed: {species}")
