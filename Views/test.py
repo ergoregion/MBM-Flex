@@ -518,7 +518,7 @@ class ControlPanelWidget(QWidget):
 
         # Gradient options
         self.gradient_combo = QComboBox()
-        self.gradient_combo.addItems(["Rainbow", "Red-Blue", "Green-Yellow", "Purple-Orange"])
+        self.gradient_combo.addItems(["Rainbow", "Red-Blue", "Green-Yellow", "Purple-Orange", "IRONBOW"])
         layout.addWidget(QLabel("Color Gradient:"))
         layout.addWidget(self.gradient_combo)
 
@@ -550,6 +550,14 @@ class ControlPanelWidget(QWidget):
             return [QColor("green"), QColor("yellow")]
         elif name == "Purple-Orange":
             return [QColor("purple"), QColor("orange")]
+        elif name == "IRONBOW":
+            return [
+                QColor("black"),         
+                QColor("dark magenta"),     
+                QColor("dark orange"),
+                QColor("yellow" ),
+                QColor("white" )
+            ]
         else:
             return [QColor("darkgray")]
 
