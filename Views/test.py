@@ -1,5 +1,6 @@
 import sys
 import json
+import math
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QGraphicsView, QGraphicsScene,
     QGraphicsRectItem, QGraphicsItem, QGraphicsLineItem, QGraphicsEllipseItem
@@ -9,7 +10,7 @@ from PySide6.QtGui import QPainter, QPen, QColor, QAction, QContextMenuEvent, QB
 from PySide6.QtWidgets import QGraphicsTextItem, QDockWidget
 from PySide6.QtWidgets import QMenu, QWidget, QComboBox, QSlider
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton
-from PySide6.QtWidgets import QFileDialog
+from PySide6.QtWidgets import QFileDialog, QSizePolicy
 
 from model import SimpleEdge, SimpleGraph, SimpleNode
 
@@ -569,44 +570,66 @@ class ControlPanelWidget(QWidget):
 
         # Gradient options
         self.gradient_combo = QComboBox()
-        self.gradient_combo.addItems(["Rainbow", "Red-Blue", "Green-Yellow", "Purple-Orange", "IRONBOW"])
+        self.gradient_combo.addItems(["ironbow", "Rainbow", "Blue-Red", "Green-Yellow", "Purple-Orange", "Black-White"])
         layout.addWidget(QLabel("Color Gradient:"))
         layout.addWidget(self.gradient_combo)
 
-        self.brightness_slider = QSlider(Qt.Horizontal)
-        self.brightness_slider.setRange(50, 150)
-        self.brightness_slider.setValue(100)
-        self.brightness_label = QLabel("Brightness: 100%")
-        layout.addWidget(self.brightness_label)
-        layout.addWidget(self.brightness_slider)
+        
+        self.species_combo = QComboBox()
+        self.species_combo.addItems(["", "O3", ])
+        self.species_combo.setEditable(True)
+        self.species_combo.lineEdit().editingFinished.connect(self.add_species_if_new)
+        self.species_combo.setMinimumWidth(150)
+        layout.addWidget(QLabel("Species:"))
+        layout.addWidget(self.species_combo)
+
+        self.time_slider = QSlider(Qt.Horizontal)
+        self.time_slider.setRange(50, 150)
+        self.time_slider.setValue(50)
+        self.time_label = QLabel("Time: 50")
+        layout.addWidget(self.time_label)
+        layout.addWidget(self.time_slider)
 
         self.gradient_combo.currentIndexChanged.connect(self.update_node_colors)
-        self.brightness_slider.valueChanged.connect(self.on_brightness_changed)
+        self.species_combo.currentIndexChanged.connect(self.update_node_colors)
+        self.time_slider.valueChanged.connect(self.on_time_changed)
 
         self.update_node_colors()
 
-    def on_brightness_changed(self, value):
-        self.brightness_label.setText(f"Brightness: {value}%")
+    def add_species_if_new(self):
+        text = self.species_combo.currentText()
+        if text and self.species_combo.findText(text) == -1:
+            self.species_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+            self.species_combo.addItem(text)
+        self.update_node_colors()
+
+    def on_time_changed(self, value):
+        self.time_label.setText(f"Time: {value}")
         self.update_node_colors()
 
     def get_gradient_colors(self, name):
         if name == "Rainbow":
-            # Full rainbow gradient sampled at steps
             return [
-                QColor.fromHsvF(h / 6.0, 1.0, 1.0) for h in range(7)
-            ]  # 7 colors around hue wheel
-        elif name == "Red-Blue":
-            return [QColor("red"), QColor("blue")]
+                QColor("dark blue"),         
+                QColor("blue"),     
+                QColor("green"),
+                QColor("yellow" ),
+                QColor("red" ),
+                QColor("white" )
+            ]
+        elif name == "Blue-Red":
+            return [QColor("blue"), QColor("red")]
+        elif name == "Black-White":
+            return [QColor("black"), QColor("white")]
         elif name == "Green-Yellow":
             return [QColor("green"), QColor("yellow")]
         elif name == "Purple-Orange":
             return [QColor("purple"), QColor("orange")]
-        elif name == "IRONBOW":
+        elif name == "ironbow":
             return [
                 QColor("black"),         
-                QColor("dark magenta"),     
-                QColor("dark orange"),
-                QColor("yellow" ),
+                QColor("dark magenta"),    
+                QColor("orange" ),
                 QColor("white" )
             ]
         else:
@@ -635,7 +658,8 @@ class ControlPanelWidget(QWidget):
     def update_node_colors(self):
         gradient_name = self.gradient_combo.currentText()
         gradient_colors = self.get_gradient_colors(gradient_name)
-        brightness = self.brightness_slider.value() / 100
+        time = self.time_slider.value() /50
+        species = self.species_combo.currentText()
 
         nodes = [item for item in self.scene.items() if isinstance(item, Node)]
         nodes.sort(key=lambda n: n.name)  # or sort by ID or position
@@ -643,13 +667,13 @@ class ControlPanelWidget(QWidget):
         n_count = max(1, len(nodes))
 
         for i, node in enumerate(nodes):
-            offset = i / n_count  # normalized offset [0, 1)
-            c = self.get_color_from_gradient(gradient_colors, offset)
+            if (not species):
+                c = QColor("darkgray")
+            else:
+                node_offset = 1-(i/3) / (n_count)  # normalized offset [0, 1)
+                value = 1.0-node_offset*(math.exp(-(0.12+0.1/(10-i))*time))
+                c = self.get_color_from_gradient(gradient_colors, value)
 
-            # Adjust brightness (value in HSV)
-            h, s, v, a = c.getHsv()
-            v = max(0, min(255, int(v * brightness)))
-            c.setHsv(h, s, v, a)
 
             node.setBrush(c)
 
@@ -658,7 +682,7 @@ class LegendWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.gradient_colors = [QColor("red"), QColor("blue")]
-        self.brightness = 1.0
+        self.limits = (0,1)
         self.setFixedHeight(90)
         self.setMinimumWidth(300)
         self.setToolTip("Color Legend")
@@ -667,8 +691,8 @@ class LegendWidget(QWidget):
         self.gradient_colors = colors
         self.update()
 
-    def setBrightness(self, brightness):
-        self.brightness = brightness
+    def setLimits(self, limits):
+        self.limits = limits
         self.update()
 
     def paintEvent(self, event):
@@ -687,7 +711,7 @@ class LegendWidget(QWidget):
         for i, c in enumerate(self.gradient_colors):
             # Adjust brightness
             h, s, v, a = c.getHsv()
-            v = max(0, min(255, int(v * self.brightness)))
+            v = max(0, min(255, int(v * 1)))
             bright_color = QColor()
             bright_color.setHsv(h, s, v, a)
             gradient.setColorAt(i / (n - 1 if n > 1 else 1), bright_color)
@@ -696,10 +720,11 @@ class LegendWidget(QWidget):
         painter.setPen(QPen(QColor("white")))
         painter.drawRect(gradient_rect)
 
-        # Draw numeric labels 0.0 to 1.0 below gradient bar
+        # Draw numeric labels limit[0] to limit[1] below gradient bar
         for i in range(6):
             x = gradient_rect.left() + i * (gradient_rect.width() / 5)
-            label = f"{i / 5:.1f}"
+            value = self.limits[0] + (i/5)*(self.limits[1]-self.limits[0])
+            label = f"{value:.1f}"
             painter.drawText(x - 10, gradient_rect.bottom() + 15, 30, 15, Qt.AlignCenter, label)
 
 
@@ -714,7 +739,8 @@ class WindowClass(QMainWindow):
 
         self.controls = ControlPanelWidget(self.view.scene())
         self.controls.gradient_combo.currentIndexChanged.connect(self.updateLegend)
-        self.controls.brightness_slider.valueChanged.connect(self.updateLegend)
+        self.controls.species_combo.currentIndexChanged.connect(self.updateLegend)
+        self.controls.time_slider.valueChanged.connect(self.updateLegend)
 
         dock = QDockWidget("Controls", self)
         dock.setWidget(self.controls)
@@ -727,17 +753,15 @@ class WindowClass(QMainWindow):
         dock2.setAllowedAreas(Qt.BottomDockWidgetArea | Qt.TopDockWidgetArea)
         self.addDockWidget(Qt.TopDockWidgetArea, dock2)  # Now dock widget is added properly
 
-        self.controls.gradient_combo.currentIndexChanged.connect(self.updateLegend)
-        self.controls.brightness_slider.valueChanged.connect(self.updateLegend)
 
         self.updateLegend()
 
     def updateLegend(self):
         gradient_name = self.controls.gradient_combo.currentText()
         gradient_colors = self.controls.get_gradient_colors(gradient_name)
-        brightness = self.controls.brightness_slider.value() / 100
+        limits = (0,1)
         self.legend.setGradientColors(gradient_colors)
-        self.legend.setBrightness(brightness)
+        self.legend.setLimits(limits)
 
     def initMenuBar(self):
         menubar = self.menuBar()
