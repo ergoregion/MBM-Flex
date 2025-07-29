@@ -1,4 +1,5 @@
 import sys
+import json
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QGraphicsView, QGraphicsScene,
     QGraphicsRectItem, QGraphicsItem, QGraphicsLineItem, QGraphicsEllipseItem
@@ -8,6 +9,9 @@ from PySide6.QtGui import QPainter, QPen, QColor, QAction, QContextMenuEvent, QB
 from PySide6.QtWidgets import QGraphicsTextItem, QDockWidget
 from PySide6.QtWidgets import QMenu, QWidget, QComboBox, QSlider
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton
+from PySide6.QtWidgets import QFileDialog
+
+from model import SimpleEdge, SimpleGraph, SimpleNode
 
 class EdgeEditorDialog(QDialog):
     def __init__(self, edge, parent=None):
@@ -52,6 +56,20 @@ class NodeEditorDialog(QDialog):
     def getNewName(self):
         return self.name_edit.text().strip()
 
+
+def save_graph_to_file(graph: SimpleGraph, parent_widget=None):
+    path, _ = QFileDialog.getSaveFileName(parent_widget, "Save Graph", "", "Graph JSON (*.json)")
+    if path:
+        with open(path, "w") as f:
+            json.dump(graph.to_dict(), f, indent=2)
+
+def load_graph_from_file(parent_widget=None) -> SimpleGraph | None:
+    path, _ = QFileDialog.getOpenFileName(parent_widget, "Load Graph", "", "Graph JSON (*.json)")
+    if path:
+        with open(path, "r") as f:
+            data = json.load(f)
+            return SimpleGraph.from_dict(data)
+    return None
 
 class EdgeIndicator(QGraphicsRectItem):
     def __init__(self, rect, parent_edge):
@@ -163,6 +181,9 @@ class ViewClass(QGraphicsView):
             if dest_node:
                 edge = Edge(self.edge_drag_start_node, dest_node)
                 self.scene().addItem(edge)
+                se = SimpleEdge(self.edge_drag_start_node.model, dest_node.model)
+                self.scene().graph.edges.append(se)
+                edge.bind_model(se)
 
             # Re-enable moving on start node
             self.edge_drag_start_node.setFlag(QGraphicsItem.ItemIsMovable, True)
@@ -191,17 +212,21 @@ class ViewClass(QGraphicsView):
                 if hasattr(item, 'edges'):
                     for edge in item.edges[:]:
                         self.scene().removeItem(edge)
+                        self.scene().graph.edges.remove(edge.model)
                         if hasattr(edge.source, 'edges'):
                             edge.source.edges.remove(edge)
                         if hasattr(edge.dest, 'edges'):
                             edge.dest.edges.remove(edge)
                 self.scene().removeItem(item)
+                if item.model in self.scene().graph.nodes: self.scene().graph.nodes.remove(item.model)
+                if item.model in self.scene().graph.edges: self.scene().graph.edges.remove(item.model)
 
 class SceneClass(QGraphicsScene):
     grid = 30
 
     def __init__(self, parent=None):
         super().__init__(QRectF(-1000, -1000, 2000, 2000), parent)
+        self.graph = SimpleGraph()
 
     def drawBackground(self, painter, rect):
         painter.fillRect(rect, QColor(30, 30, 30))
@@ -230,6 +255,10 @@ class SceneClass(QGraphicsScene):
         self.addItem(node)
         node.setPos(event.scenePos())
 
+        sn = SimpleNode(node.name, node.pos().x(), node.pos().y())
+        self.graph.nodes.append(sn)
+        node.bind_model(sn)
+
         super().mouseDoubleClickEvent(event)
 
     def mousePressEvent(self, event):
@@ -237,6 +266,10 @@ class SceneClass(QGraphicsScene):
             if len(self.selectedItems()) == 2:
                 edge = Edge(self.selectedItems()[0], self.selectedItems()[1])
                 self.addItem(edge)
+                se = SimpleEdge(self.selectedItems()[0].model, self.selectedItems()[1].model)
+                self.model.edges.append(se)
+                self.graph.edges.append(se)
+                edge.bind_model(se)
         super().mousePressEvent(event)
 
     def contextMenuEvent(self, event):
@@ -252,6 +285,9 @@ class SceneClass(QGraphicsScene):
                 node = Node()
                 self.addItem(node)
                 node.setPos(event.scenePos())
+                sn = SimpleNode(node.name, node.pos().x(), node.pos().y())
+                self.graph.nodes.append(sn)
+                node.bind_model(sn)
         else:
             # Pass event to the topmost item under cursor so their contextMenuEvent fires
             items[0].contextMenuEvent(event)
@@ -289,6 +325,9 @@ class Node(QGraphicsRectItem):
         self.handle.setZValue(2)
         self.handle.hide()
 
+    def bind_model(self, simple_node: SimpleNode):
+        self.model = simple_node
+
     def addEdge(self, edge):
         self.edges.append(edge)
 
@@ -307,6 +346,9 @@ class Node(QGraphicsRectItem):
                 edge.adjust()
             self.handle.updatePosition()
             self.updateLabelPosition()
+            if hasattr(self, 'model'):
+                self.model.x = self.pos().x()
+                self.model.y = self.pos().y()
 
         return super().itemChange(change, value)
 
@@ -314,6 +356,9 @@ class Node(QGraphicsRectItem):
         super().setRect(x, y, w, h)
         self.handle.updatePosition()
         self.updateLabelPosition()
+        if hasattr(self, 'model'):
+            self.model.width = w
+            self.model.height = h
 
     def updateLabelPosition(self):
         rect = self.rect()
@@ -396,6 +441,10 @@ class Edge(QGraphicsLineItem):
         self.indicator_circle = None  # replaces old indicator_rect
 
         self.adjust()
+
+    
+    def bind_model(self, simple_edge: SimpleEdge):
+        self.model = simple_edge
 
     def adjust(self):
         self.prepareGeometryChange()
@@ -495,6 +544,8 @@ class Edge(QGraphicsLineItem):
                 self.name = new_name
                 if hasattr(self, "label"):
                     self.label.setPlainText(self.name)
+                if hasattr(self, "model"):
+                    self.model.name = new_name
                 self.adjust()
 
     def deleteEdge(self):
@@ -656,6 +707,7 @@ class WindowClass(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.view = ViewClass()
+        self.initMenuBar()
         self.setCentralWidget(self.view)
 
         self.legend = LegendWidget(self.view)
@@ -686,6 +738,47 @@ class WindowClass(QMainWindow):
         brightness = self.controls.brightness_slider.value() / 100
         self.legend.setGradientColors(gradient_colors)
         self.legend.setBrightness(brightness)
+
+    def initMenuBar(self):
+        menubar = self.menuBar()
+        file_menu = menubar.addMenu("File")
+
+        save_action = QAction("Save Graph", self)
+        save_action.triggered.connect(self.saveGraph)
+        file_menu.addAction(save_action)
+
+        load_action = QAction("Load Graph", self)
+        load_action.triggered.connect(self.loadGraph)
+        file_menu.addAction(load_action)
+
+    def saveGraph(self):
+        save_graph_to_file(self.view.s.graph, self)
+
+    def loadGraph(self):
+        graph = load_graph_from_file(self)
+        if graph:
+            self.view.s.clear()  # Clear scene
+            self.view.s.graph = graph
+            node_items = []
+            for node_model in graph.nodes:
+                node_item = Node()
+                node_item.bind_model(node_model)
+                self.view.s.addItem(node_item)
+                node_item.setPos(node_model.x, node_model.y)
+                node_item.setRect(0, 0, node_model.width, node_model.height)
+                node_items.append(node_item)
+
+            for edge_model in graph.edges:
+                src_idx = graph.nodes.index(edge_model.source)
+                tgt_idx = graph.nodes.index(edge_model.target)
+                edge_item = Edge(node_items[src_idx], node_items[tgt_idx])
+                node_items[src_idx].edges.append(edge_item)
+                node_items[tgt_idx].edges.append(edge_item)
+                edge_item.name = edge_model.name
+                edge_item.bind_model(edge_model)
+                self.view.s.addItem(edge_item)
+
+            self.controls.update_node_colors()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
