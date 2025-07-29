@@ -184,6 +184,7 @@ class ViewClass(QGraphicsView):
                 se = SimpleEdge(self.edge_drag_start_node.model, dest_node.model)
                 self.scene().graph.edges.append(se)
                 edge.bind_model(se)
+                edge.adjust()
 
             # Re-enable moving on start node
             self.edge_drag_start_node.setFlag(QGraphicsItem.ItemIsMovable, True)
@@ -270,6 +271,7 @@ class SceneClass(QGraphicsScene):
                 self.model.edges.append(se)
                 self.graph.edges.append(se)
                 edge.bind_model(se)
+                edge.adjust()
         super().mousePressEvent(event)
 
     def contextMenuEvent(self, event):
@@ -439,8 +441,6 @@ class Edge(QGraphicsLineItem):
         self.setPen(self.pen)
 
         self.indicator_circle = None  # replaces old indicator_rect
-
-        self.adjust()
 
     
     def bind_model(self, simple_edge: SimpleEdge):
@@ -772,13 +772,11 @@ class WindowClass(QMainWindow):
                 src_idx = graph.nodes.index(edge_model.source)
                 tgt_idx = graph.nodes.index(edge_model.target)
                 edge_item = Edge(node_items[src_idx], node_items[tgt_idx])
-                node_items[src_idx].edges.append(edge_item)
-                node_items[tgt_idx].edges.append(edge_item)
                 edge_item.name = edge_model.name
                 edge_item.bind_model(edge_model)
                 self.view.s.addItem(edge_item)
+                edge_item.adjust()
 
-            self.controls.update_node_colors()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
