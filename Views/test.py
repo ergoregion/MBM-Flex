@@ -1,9 +1,11 @@
 import sys
+import os
+import pandas as pd
 import json
 import math
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QGraphicsView, QGraphicsScene,
-    QGraphicsRectItem, QGraphicsItem, QGraphicsLineItem, QGraphicsEllipseItem
+    QGraphicsRectItem, QGraphicsItem, QGraphicsLineItem, QGraphicsEllipseItem, QMessageBox
 )
 from PySide6.QtCore import Qt, QRectF, QLine, QLineF, QPointF
 from PySide6.QtGui import QPainter, QPen, QColor, QAction, QContextMenuEvent, QBrush
@@ -63,6 +65,30 @@ def save_graph_to_file(graph: SimpleGraph, parent_widget=None):
     if path:
         with open(path, "w") as f:
             json.dump(graph.to_dict(), f, indent=2)
+
+def load_dataframes_from_pickles(filenames, directory):
+    """
+    Load pandas DataFrames from pickle files in the specified directory.
+    
+    Parameters:
+        filenames (dict[any, str]): dictionay of filenames.
+        directory (str): Directory path where pickle files are located.
+        
+    Returns:
+        dict[any, pd.DataFrame]: Dictionary of DataFrames.
+    """
+    dataframes = {}
+
+    for key, filename in filenames.items():
+        filepath = os.path.join(directory, filename)
+        try:
+            df = pd.read_pickle(filepath)
+            dataframes[key] = df
+        except Exception as e:
+            # Optionally show a PySide message box for GUI-based error notification
+            QMessageBox.critical(None, "File Load Error", f"Failed to load {filepath}:\n{str(e)}")
+    
+    return dataframes
 
 def load_graph_from_file(parent_widget=None) -> SimpleGraph | None:
     path, _ = QFileDialog.getOpenFileName(parent_widget, "Load Graph", "", "Graph JSON (*.json)")
@@ -756,6 +782,8 @@ class WindowClass(QMainWindow):
 
         self.updateLegend()
 
+        self.results = None
+
     def updateLegend(self):
         gradient_name = self.controls.gradient_combo.currentText()
         gradient_colors = self.controls.get_gradient_colors(gradient_name)
@@ -775,8 +803,24 @@ class WindowClass(QMainWindow):
         load_action.triggered.connect(self.loadGraph)
         file_menu.addAction(load_action)
 
+        
+        load_results_action = QAction("Load Results", self)
+        load_results_action.triggered.connect(self.loadResults)
+        file_menu.addAction(load_results_action)
+
     def saveGraph(self):
         save_graph_to_file(self.view.s.graph, self)
+
+    
+    def loadResults(self):
+
+        rooms = dict((room, f"room_results_{"".join(room.name.split())}") for room in self.view.s.graph.nodes)
+        directory = QFileDialog.getExistingDirectory(self, "Select Directory")
+        if directory:
+            self.results = load_dataframes_from_pickles(rooms, directory)
+        else:
+            self.results = None
+        
 
     def loadGraph(self):
         graph = load_graph_from_file(self)
