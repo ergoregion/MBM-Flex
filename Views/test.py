@@ -255,6 +255,7 @@ class SceneClass(QGraphicsScene):
     def __init__(self, parent=None):
         super().__init__(QRectF(-1000, -1000, 2000, 2000), parent)
         self.graph = SimpleGraph()
+        self.results = None
 
     def drawBackground(self, painter, rect):
         painter.fillRect(rect, QColor(30, 30, 30))
@@ -602,7 +603,7 @@ class ControlPanelWidget(QWidget):
 
         
         self.species_combo = QComboBox()
-        self.species_combo.addItems(["", "O3", ])
+        self.species_combo.addItems(["", "O3", "CO"])
         self.species_combo.setEditable(True)
         self.species_combo.lineEdit().editingFinished.connect(self.add_species_if_new)
         self.species_combo.setMinimumWidth(150)
@@ -610,9 +611,9 @@ class ControlPanelWidget(QWidget):
         layout.addWidget(self.species_combo)
 
         self.time_slider = QSlider(Qt.Horizontal)
-        self.time_slider.setRange(50, 150)
-        self.time_slider.setValue(50)
-        self.time_label = QLabel("Time: 50")
+        self.time_slider.setRange(0, 1)
+        self.time_slider.setValue(0)
+        self.time_label = QLabel("Time: 0")
         layout.addWidget(self.time_label)
         layout.addWidget(self.time_slider)
 
@@ -668,7 +669,10 @@ class ControlPanelWidget(QWidget):
         b = color1.blue() + (color2.blue() - color1.blue()) * t
         return QColor(int(r), int(g), int(b))
 
-    def get_color_from_gradient(self, gradient_colors, t):
+    def get_color_from_gradient(self, gradient_colors, value):
+
+        t = (value-self.get_limits()[0])/(self.get_limits()[1]-self.get_limits()[0])
+
         """t in [0,1], return color interpolated on gradient list."""
         if len(gradient_colors) == 1:
             return gradient_colors[0]
@@ -681,26 +685,56 @@ class ControlPanelWidget(QWidget):
             return gradient_colors[-1]
         return self.interpolate_color(gradient_colors[index], gradient_colors[index + 1], frac)
 
+    def get_limits(self):       
+        species = self.species_combo.currentText()
+
+        if self.scene.results is None or not species:
+            return (0,1)
+        try:
+            min_species = min(
+                min(results[species]) for _, results in self.scene.results.items()
+            )
+
+            max_species = max(
+                max(results[species]) for _, results in self.scene.results.items()
+            )
+
+            a = (max_species+min_species)/2 + (max_species-min_species)/2*1.5
+            b = (max_species+min_species)/2 - (max_species-min_species)/2*1.5
+            return (b,a)
+
+        except KeyError:
+            return (0,1)
+        
+
+    def setup_times(self):
+        if self.scene.results is not None:
+            min_time = min(r.index.min() for _, r in self.scene.results.items())
+            max_time = max(r.index.max() for _, r in self.scene.results.items())
+            self.time_slider.setRange(min_time, max_time)
+            self.time_slider.setValue(min_time)
+            self.time_label.setText(f"Time: {min_time}")
+
     def update_node_colors(self):
         gradient_name = self.gradient_combo.currentText()
         gradient_colors = self.get_gradient_colors(gradient_name)
-        time = self.time_slider.value() /50
+        time = self.time_slider.value()
         species = self.species_combo.currentText()
 
         nodes = [item for item in self.scene.items() if isinstance(item, Node)]
-        nodes.sort(key=lambda n: n.name)  # or sort by ID or position
 
-        n_count = max(1, len(nodes))
-
-        for i, node in enumerate(nodes):
-            if (not species):
+        for node in nodes:
+            if (self.scene.results is None or not species):
                 c = QColor("darkgray")
             else:
-                node_offset = 1-(i/3) / (n_count)  # normalized offset [0, 1)
-                value = 1.0-node_offset*(math.exp(-(0.12+0.1/(10-i))*time))
-                c = self.get_color_from_gradient(gradient_colors, value)
-
-
+                try:
+                    closest_time = min(self.scene.results[node.model].index, key=lambda x: abs(x - time))
+                    value = self.scene.results[node.model][species][closest_time]
+                    if isinstance(value, pd.Series):
+                        value = value.iloc[-1]
+                    c = self.get_color_from_gradient(gradient_colors, value)
+                except KeyError:
+                    c = QColor("darkgray")
             node.setBrush(c)
 
 
@@ -750,8 +784,8 @@ class LegendWidget(QWidget):
         for i in range(6):
             x = gradient_rect.left() + i * (gradient_rect.width() / 5)
             value = self.limits[0] + (i/5)*(self.limits[1]-self.limits[0])
-            label = f"{value:.1f}"
-            painter.drawText(x - 10, gradient_rect.bottom() + 15, 30, 15, Qt.AlignCenter, label)
+            label = f"{value:.4g}"
+            painter.drawText(x - 80, gradient_rect.bottom() + 15, 160, 15, Qt.AlignCenter, label)
 
 
 class WindowClass(QMainWindow):
@@ -782,12 +816,10 @@ class WindowClass(QMainWindow):
 
         self.updateLegend()
 
-        self.results = None
-
     def updateLegend(self):
         gradient_name = self.controls.gradient_combo.currentText()
         gradient_colors = self.controls.get_gradient_colors(gradient_name)
-        limits = (0,1)
+        limits = self.controls.get_limits()
         self.legend.setGradientColors(gradient_colors)
         self.legend.setLimits(limits)
 
@@ -817,9 +849,10 @@ class WindowClass(QMainWindow):
         rooms = dict((room, f"room_results_{"".join(room.name.split())}") for room in self.view.s.graph.nodes)
         directory = QFileDialog.getExistingDirectory(self, "Select Directory")
         if directory:
-            self.results = load_dataframes_from_pickles(rooms, directory)
+            self.view.s.results = load_dataframes_from_pickles(rooms, directory)
+            self.controls.setup_times()
         else:
-            self.results = None
+            self.view.s.results = None
         
 
     def loadGraph(self):
