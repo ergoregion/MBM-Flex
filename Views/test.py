@@ -713,8 +713,8 @@ class ControlPanelWidget(QWidget):
                 c = QColor("darkgray")
             else:
                 try:
-                    closest_time = min(self.scene.results[node.model].index, key=lambda x: abs(x - time))
-                    value = self.scene.results[node.model][species][closest_time]
+                    closest_time = min(self.scene.results[node.model.name].index, key=lambda x: abs(x - time))
+                    value = self.scene.results[node.model.name][species][closest_time]
                     if isinstance(value, pd.Series):
                         value = value.iloc[-1]
                     c = self.get_color_from_gradient(gradient_colors, value)
