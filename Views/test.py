@@ -1,3 +1,4 @@
+import pickle
 import sys
 import os
 import pandas as pd
@@ -66,29 +67,13 @@ def save_graph_to_file(graph: SimpleGraph, parent_widget=None):
         with open(path, "w") as f:
             json.dump(graph.to_dict(), f, indent=2)
 
-def load_dataframes_from_pickles(filenames, directory):
-    """
-    Load pandas DataFrames from pickle files in the specified directory.
+def load_dataframes_from_pickles(parent_widget=None) -> SimpleGraph | None:
+    path, _ = QFileDialog.getOpenFileName(parent_widget, "Load results", "", "results pkl (*.pkl)")
+    if path:
+        with open(path, "rb") as f:
+            return pickle.load(f)
+    return None
     
-    Parameters:
-        filenames (dict[any, str]): dictionay of filenames.
-        directory (str): Directory path where pickle files are located.
-        
-    Returns:
-        dict[any, pd.DataFrame]: Dictionary of DataFrames.
-    """
-    dataframes = {}
-
-    for key, filename in filenames.items():
-        filepath = os.path.join(directory, filename)
-        try:
-            df = pd.read_pickle(filepath)
-            dataframes[key] = df
-        except Exception as e:
-            # Optionally show a PySide message box for GUI-based error notification
-            QMessageBox.critical(None, "File Load Error", f"Failed to load {filepath}:\n{str(e)}")
-    
-    return dataframes
 
 def load_graph_from_file(parent_widget=None) -> SimpleGraph | None:
     path, _ = QFileDialog.getOpenFileName(parent_widget, "Load Graph", "", "Graph JSON (*.json)")
@@ -846,14 +831,9 @@ class WindowClass(QMainWindow):
     
     def loadResults(self):
 
-        rooms = dict((room, f"room_results_{"".join(room.name.split())}") for room in self.view.s.graph.nodes)
-        directory = QFileDialog.getExistingDirectory(self, "Select Directory")
-        if directory:
-            self.view.s.results = load_dataframes_from_pickles(rooms, directory)
-            self.controls.setup_times()
-        else:
-            self.view.s.results = None
-        
+        self.view.s.results = load_dataframes_from_pickles()
+        print(self.view.s.results.keys())
+        self.controls.setup_times()        
 
     def loadGraph(self):
         graph = load_graph_from_file(self)
