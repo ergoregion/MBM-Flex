@@ -685,7 +685,7 @@ class ControlPanelWidget(QWidget):
             )
 
             a = (max_species+min_species)/2 + (max_species-min_species)/2*1.5
-            b = (max_species+min_species)/2 - (max_species-min_species)/2*1.5
+            b = max((max_species+min_species)/2 - (max_species-min_species)/2*1.5,0)
             return (b,a)
 
         except KeyError:
@@ -748,7 +748,7 @@ class LegendWidget(QWidget):
         painter.fillRect(rect, QColor(30, 30, 30))
 
         # Draw gradient bar
-        gradient_rect = QRectF(10, 10, rect.width() - 20, 15)
+        gradient_rect = QRectF(50, 10, rect.width() - 100, 15)
         gradient = QLinearGradient(gradient_rect.topLeft(), gradient_rect.topRight())
 
         # Add stops based on gradient_colors with brightness applied
@@ -832,7 +832,6 @@ class WindowClass(QMainWindow):
     def loadResults(self):
 
         self.view.s.results = load_dataframes_from_pickles()
-        print(self.view.s.results.keys())
         self.controls.setup_times()        
 
     def loadGraph(self):
