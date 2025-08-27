@@ -656,7 +656,10 @@ class ControlPanelWidget(QWidget):
 
     def get_color_from_gradient(self, gradient_colors, value):
 
-        t = (value-self.get_limits()[0])/(self.get_limits()[1]-self.get_limits()[0])
+        if( self.get_limits()[0] == self.get_limits()[1]):
+            t = 0.5
+        else:
+            t = (value-self.get_limits()[0])/(self.get_limits()[1]-self.get_limits()[0])
 
         """t in [0,1], return color interpolated on gradient list."""
         if len(gradient_colors) == 1:
