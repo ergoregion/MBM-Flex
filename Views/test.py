@@ -342,6 +342,9 @@ class Node(QGraphicsRectItem):
 
     def bind_model(self, simple_node: SimpleNode):
         self.model = simple_node
+        self.name = simple_node.name
+        self.label.setPlainText(self.name)
+        self.updateLabelPosition()
 
     def addEdge(self, edge):
         self.edges.append(edge)
