@@ -1,5 +1,5 @@
-from .roomcomposition import RoomComposition
-from .room import Room
+from .surface_composition import SurfaceComposition
+from .room_chemistry import RoomChemistry
 from .time_dep_value import TimeDependentValue
 from.bracketed_value import TimeBracketedValue
 from pandas import read_csv
@@ -37,7 +37,7 @@ def build_rooms(csv_file: str):
     result = {}
 
     for i in range(nroom):
-        rc = RoomComposition(
+        rc = SurfaceComposition(
             soft=mrsoft[i],
             paint=mrpaint[i],
             wood=mrwood[i],
@@ -49,7 +49,7 @@ def build_rooms(csv_file: str):
             glass=mrglass[i],
             other=mrother[i])
 
-        r = Room(
+        r = RoomChemistry(
             composition=rc,
             volume_in_m3=mrvol[i],
             surf_area_in_m2=mrsurfa[i],
@@ -61,7 +61,7 @@ def build_rooms(csv_file: str):
     return result
 
 
-def populate_room_with_emissions_file(room: Room, csv_file: str):
+def populate_room_with_emissions_file(room: RoomChemistry, csv_file: str):
     """
     Use a csv emissions file to populate an existing room with emissions
     """
@@ -76,7 +76,7 @@ def populate_room_with_emissions_file(room: Room, csv_file: str):
         if match:
             return float(match.group())
         else:
-            raise Exception("No time detected in the collumn")
+            raise Exception("No time detected in the column")
 
     times = [extract_time(t) for t in time_cols]
     room.emissions = {}
@@ -91,45 +91,25 @@ def populate_room_with_emissions_file(room: Room, csv_file: str):
 
 
 
-def populate_room_with_tvar_file(room: Room, csv_file: str):
+def populate_room_with_tvar_file(room: RoomChemistry, csv_file: str):
     """
     Use a csv variables file to populate an existing room with additional properties
     """
     expos_params = read_csv(csv_file)
 
     times = expos_params["seconds_from_midnight"]
-    room.temp_in_kelvin = TimeDependentValue(list(zip(times, expos_params["temp_in_kelvin"])))
-    room.rh_in_percent = TimeDependentValue(list(zip(times, expos_params["rh_in_percent"])))
-    room.airchange_in_per_second = TimeDependentValue(list(zip(times, expos_params["airchange_in_per_second"])))
-    room.light_switch = TimeDependentValue(list(zip(times, expos_params["light_switch"])))
+    room.temp_in_kelvin = TimeDependentValue(list(zip(times, expos_params["temp_in_kelvin"])), continuous=True)
+    room.rh_in_percent = TimeDependentValue(list(zip(times, expos_params["rh_in_percent"])), continuous=True)
+    room.airchange_in_per_second = TimeDependentValue(list(zip(times, expos_params["airchange_in_per_second"])), continuous=True)
+    room.light_switch = TimeDependentValue(list(zip(times, expos_params["light_switch"])), continuous=False)
 
 
-def populate_room_with_expos_file(room: Room, csv_file: str):
+def populate_room_with_expos_file(room: RoomChemistry, csv_file: str):
     """
     Use a csv exposure file to populate an existing room with numbers of children an adults
     """
     expos_params = read_csv(csv_file)
 
     times = expos_params["seconds_from_midnight"]
-    room.n_adults = TimeDependentValue(list(zip(times, expos_params["n_adults"])))
-    room.n_children = TimeDependentValue(list(zip(times, expos_params["n_children"])))
-
-def interpret_light_on_times(room_mrlswitch: List[Tuple[float,float]], end_of_total_integration: float)->List[List[int]]:
-
-    light_on_times =[]
-    
-    for i in range(len(room_mrlswitch.values())-1):
-        if(room_mrlswitch.values()[i]==1):
-            light_on_times.append([room_mrlswitch.times()[i], room_mrlswitch.times()[i+1]])
-    if(room_mrlswitch.values()[-1]==1):
-        light_on_times.append([room_mrlswitch.times()[-1], room_mrlswitch.values()[0]+3600.0])
-                              
-    return light_on_times
-
-    #on_times = [room_mrlswitch.times()[i+1] for i in range(len(room_mrlswitch.values())-1) 
-    #            if (room_mrlswitch.values()[i+1]==1) 
-    #            and (room_mrlswitch.values()[i]==0)]
-    #
-    #off_times = [room_mrlswitch.times()[i+1] for i in range(len(room_mrlswitch.values())-1) 
-    #            if (room_mrlswitch.values()[i+1]==0) 
-    #            and (room_mrlswitch.values()[i]==1)]
+    room.n_adults = TimeDependentValue(list(zip(times, expos_params["n_adults"])), continuous=False)
+    room.n_children = TimeDependentValue(list(zip(times, expos_params["n_children"])), continuous=False)
