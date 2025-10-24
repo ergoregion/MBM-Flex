@@ -1,0 +1,51 @@
+    body {
+    margin: 0;
+    height: 100vh;
+    background: #1e1e1e;
+    color: white;
+    font-family: sans-serif;
+    overflow: hidden;
+  }
+
+  .pane {
+    position: absolute;
+    width: 300px;
+    background: #2c2c2c;
+    border: 2px solid #555;
+    border-radius: 6px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    transition: height 0.2s ease;
+    overflow: hidden;
+  }
+
+  .header {
+    background: #444;
+    padding: 8px;
+    cursor: grab;
+    user-select: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .toggleBtn {
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  .content {
+    padding: 10px;
+    overflow: auto;
+  }
+  
+  #logBox {
+    width: 600px;            /* fixed width */
+    height: 300px;           /* fixed height */
+    border: 1px solid #ccc;
+    padding: 10px;
+    overflow-y: scroll;      /* vertical scrollbar */
+    font-family: monospace;
+    white-space: pre-wrap;   /* preserve line breaks */
+}
