@@ -1,0 +1,33 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Apertures and Rooms</title>
+  <link rel="stylesheet" href="styles2.css" />
+</head>
+<body>
+
+<div id="toolbar">
+  <button onclick="addSquare('room')">Add Room</button>
+  <button onclick="addSquare('aperture')">Add Aperture</button>
+  <button onclick="enterLinkMode()">Link Rooms to Aperture</button>
+  <button onclick="saveLayout()">Save Layout</button>
+  <button onclick="document.getElementById('fileInput').click()">Load Layout</button>
+  <input type="file" id="fileInput" style="display: none" accept=".json" />
+</div>
+
+<div id="canvas-container">
+  <svg id="connection-lines"></svg>
+  <div id="canvas"></div>
+</div>
+
+<div id="json-editor-container">
+  <h3>Square JSON</h3>
+  <textarea id="json-editor" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()" oninput="event.stopPropagation()"></textarea>
+  <div id="json-error" style="display: none;">Invalid JSON!</div>
+</div>
+
+<script src="pane-script2.js"></script>
+
+</body>
+</html>

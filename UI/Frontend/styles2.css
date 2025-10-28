@@ -1,0 +1,148 @@
+body {
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+#json-editor-container {
+  z-index: 10;
+}
+
+#toolbar {
+  padding: 10px;
+  background: #f0f0f0;
+  border-bottom: 1px solid #ccc;
+}
+
+button {
+  margin-right: 10px;
+}
+
+#canvas-container {
+  position: relative;
+  width: 100vw;
+  height: 90vh;
+  overflow: hidden;
+}
+
+/* Link lines go behind everything */
+#connection-lines {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Canvas sits above lines */
+#canvas {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Squares shared styles */
+.square {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  box-sizing: border-box;
+  border: 2px solid black;
+  cursor: pointer;
+}
+
+/* Room in middle */
+.square.room {
+  background-color: rgb(0, 128, 255);
+  z-index: 2;
+}
+
+/* Aperture on top */
+.square.aperture {
+  background-color: rgb(255, 128, 0);
+  z-index: 3;
+}
+
+.selected {
+  border: 2px dashed red;
+}
+
+.linked {
+  border-color: green;
+}
+
+.resize-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: red;
+  bottom: -5px;
+  right: -5px;
+  cursor: se-resize;
+}
+
+.square:hover {
+  background-color: rgba(0, 0, 0, 0.05); /* subtle hover effect */
+}
+
+.square.room:hover {
+  background-color: rgba(0, 128, 255, 0.3);
+}
+
+.square.aperture:hover {
+  background-color: rgba(255, 128, 0, 0.3);
+}
+
+.connection-line.highlight {
+  stroke: orange;
+  stroke-width: 3;
+}
+.label {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  font-size: 14px;
+  user-select: none;
+}
+
+.label[contenteditable] {
+  outline: none;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 2px 4px;
+  border-radius: 3px;
+  cursor: text;
+}
+
+#json-editor-container {
+  position: fixed; 
+  top: 50px; 
+  right: 0; 
+  width: 450px; 
+  height: calc(100vh - 50px); 
+  background: #f7f7f7; 
+  border-left: 1px solid #ccc; 
+  padding: 10px; 
+  box-sizing: border-box; 
+  display: none;
+  overflow: auto;
+  font-family: monospace;
+}
+
+#json-editor {
+  width: 100%; 
+  height: 80%; 
+  resize: none; 
+  font-family: monospace;
+}
+
+
+#json-error {
+  color: red; 
+  margin-top: 5px; 
+  display: none;
+}
