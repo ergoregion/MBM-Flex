@@ -1,3 +1,4 @@
+import ctypes
 from typing import List, Tuple, Dict, Any
 import math
 
@@ -12,6 +13,7 @@ from .wind_definition import WindDefinition
 import pandas as pd
 import numpy as np
 from multiprocess import Pool
+from multiprocess import Manager, Array
 
 
 class Simulation:
@@ -66,11 +68,33 @@ class Simulation:
         @param t_interval: How often to apply the effect of windows.
         """
 
+        ##from multiprocessing import Manager
+##
+        ##mgr = Manager()
+        ##ns = mgr.Namespace()
+        ##ns.room_results = {}
+##
+        ##import numpy as np
+        ##import pandas as pd
+        ##import multiprocessing as mp
+        ##import ctypes
+##
+        ### the origingal dataframe is df, store the columns/dtypes pairs
+        ##df_dtypes_dict = dict(list(zip(df.columns, df.dtypes)))
+##
+        ### declare a shared Array with data from df
+        ##mparr = mp.Array(ctypes.c_double, df.values.reshape(-1))
+##
+        ### create a new df based on the shared array
+        ##df_shared = pd.DataFrame(np.frombuffer(mparr.get_obj()).reshape(df.shape),
+        ##                        columns=df.columns).astype(df_dtypes_dict)
+
         with Pool(self._processes) as pool:
 
             # First step
             # using the init_conditions, perform a solve on each room (performed in parallel)
             room_results, solved_time = self._evolve_rooms(pool, t0, t_interval, init_conditions, True)
+
 
             # Cumulate the results for this step and others into a cumulative results dictionary
             cumulative_room_results: Dict[RoomChemistry, pd.DataFrame] = dict(
@@ -113,10 +137,10 @@ class Simulation:
         Return the new room concentrations
         """
         # Determine the properties of the wind at this time
-        wind_speed = self._wind_definition.wind_speed.value_at_time(t0)
-        wind_direction = self._wind_definition.wind_direction.value_at_time(t0)
-        wind_direction_in_radians = wind_direction if self._wind_definition.in_radians else math.radians(
-            wind_direction)
+        wind_speed = self._wind_definition.wind_speed.value_at_time(t0) if self._wind_definition else 0
+        wind_direction = self._wind_definition.wind_direction.value_at_time(t0)  if self._wind_definition else 0
+        wind_direction_in_radians = (wind_direction if self._wind_definition.in_radians else math.radians(
+            wind_direction))  if self._wind_definition else 0
         # For each aperture  calculate a aperture result  (performed in parallel)
         args = [(w, wind_speed, wind_direction_in_radians, t_interval, room_results, t0)
                 for w in self._aperture_calculators]
@@ -175,20 +199,19 @@ class Simulation:
         Return the new room concentrations at the final time
         """
         # Make a new result from the current result the the solved time
-        result = [result.loc[[solved_time], :].astype(float) for result in room_results]
         # Go through all the aperture results
         for room_1_concentration_change, room_2_concentration_change, room1_index, room2_index in aperture_results:
             # Adjust the concentrations of room_1 int the new results
-            new_room_1_value = result[room1_index].loc[solved_time, :].add(
+            new_room_1_value = room_results[room1_index].loc[solved_time, :].add(
                 room_1_concentration_change, fill_value=0.0)
-            result[room1_index].loc[solved_time, :] = new_room_1_value
+            room_results[room1_index].loc[solved_time, :] = new_room_1_value
             # If there is a room 2, adjust the concentrations of room_2 int the new results
             if (room2_index is not None):
-                new_room_2_value = result[room2_index].loc[solved_time, :].add(
+                new_room_2_value = room_results[room2_index].loc[solved_time, :].add(
                     room_2_concentration_change, fill_value=0.0)
-                result[room2_index].loc[solved_time, :] = new_room_2_value
+                room_results[room2_index].loc[solved_time, :] = new_room_2_value
         # return the augmented results
-        return result
+        return room_results
 
     @staticmethod
     def build_room_evolver_starmap(room, global_settings):
@@ -204,7 +227,7 @@ class Simulation:
         Start with an initial text file of concentrations
         """
         df, _ = evolver.run(t0=t0, seconds_to_integrate=t_interval, initial_text_file=initial_text_file)
-        return df
+        return change_dataframe_to_shared(df)
 
     @staticmethod
     def run_room_evolver_starmap(evolver, t0, t_interval, initial_dataframe):
@@ -213,7 +236,7 @@ class Simulation:
         Start with an initial dataframe of concentrations
         """
         df, _ = evolver.run(t0=t0, seconds_to_integrate=t_interval, initial_dataframe=initial_dataframe)
-        return df
+        return change_dataframe_to_shared(df)
 
     @staticmethod
     def build_aperture_calculator_starmap(aperture, transport_paths, apertures, rooms, global_settings):
@@ -280,3 +303,15 @@ class Simulation:
                 room_2_volume)
             # For an indoor aperture, one concentration change per room is calculated
             return room_1_concentration_change, room_2_concentration_change, room1_index, room2_index
+        
+
+def change_dataframe_to_shared(df):
+    
+        ### the original dataframe is df, store the columns/dtypes pairs
+        df_dtypes_dict = dict(list(zip(df.columns, df.dtypes)))
+
+        ### declare a shared Array with data from df
+        mparr = Array(ctypes.c_double, df.values.reshape(-1))
+
+        ### create a new df based on the shared array
+        return pd.DataFrame(np.frombuffer(mparr.get_obj()).reshape(df.shape), columns=df.columns, index=df.index).astype(float)
