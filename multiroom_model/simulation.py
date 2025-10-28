@@ -1,5 +1,6 @@
 from typing import List, Tuple, Dict, Any
 import math
+import os
 
 from .aperture_flow_calculations import ApertureFlowCalculator
 from .room_chemistry import RoomChemistry
@@ -11,8 +12,14 @@ from .global_settings import GlobalSettings
 from .wind_definition import WindDefinition
 import pandas as pd
 import numpy as np
-from multiprocess import Pool
+from multiprocessing import Process, Pipe, shared_memory
 
+def dataframe_from_shared(meta):
+        shm = shared_memory.SharedMemory(name=meta['shm_name'])
+        data = np.ndarray(meta['shape'], dtype=np.dtype(meta['dtype']), buffer=shm.buf)
+
+        # Reconstruct DataFrame with index and columns
+        return pd.DataFrame(data, columns=meta['columns'], index=meta['index']), data, shm
 
 class Simulation:
     """
@@ -44,17 +51,9 @@ class Simulation:
         self._apertures = apertures
         self._wind_definition = wind_definition
 
-        with Pool(self._processes) as pool:
+        transport_paths = paths_through_building(self._rooms, self._apertures)
+        self._aperture_calculators: List[ApertureCalculation] = [self.build_aperture_calculator_starmap(w, transport_paths, self._apertures, self._rooms, self._global_settings) for w in self._apertures]
 
-            # For each room, build a room_evolver (performed in parallel)
-            args = [(r, self._global_settings) for r in self._rooms]
-            self._room_evolvers: List[RoomInchemPyEvolver] = pool.starmap(self.build_room_evolver_starmap, args)
-
-            # For each aperture, build a ApertureCalculation (performed in parallel)
-            transport_paths = paths_through_building(self._rooms, self._apertures)
-            args = [(w, transport_paths, self._apertures, self._rooms, self._global_settings) for w in self._apertures]
-            self._aperture_calculators: List[ApertureCalculation] = pool.starmap(
-                self.build_aperture_calculator_starmap, args)
 
     def run(self, init_conditions: dict, t0: float, t_total: float, t_interval: float):
         """
@@ -66,46 +65,126 @@ class Simulation:
         @param t_interval: How often to apply the effect of windows.
         """
 
-        with Pool(self._processes) as pool:
+        # Pipes for communication
+        self.parent_conns, self.child_conns = zip(*[Pipe() for _ in self._rooms])
 
-            # First step
-            # using the init_conditions, perform a solve on each room (performed in parallel)
-            room_results, solved_time = self._evolve_rooms(pool, t0, t_interval, init_conditions, True)
+        self.processes =  [
+            Process(target=self._worker,
+                    args=(self.child_conns[i],
+                          r,
+                          self._global_settings,
+                          t0,
+                          t_interval,
+                          t_total,
+                          init_conditions[r]))
+            for i, r in enumerate(self._rooms)
+        ]
 
-            # Cumulate the results for this step and others into a cumulative results dictionary
+        # Start all workers
+        for p in self.processes:
+            p.start()
+        try:
+
+            # Wait for all workers to report they’re ready
+            for conn in self.parent_conns:
+                msg = conn.recv()
+                if msg != 'READY':
+                    raise RuntimeError("Worker failed to start properly")
+            
+            print(f"\n[Main] All Workers ready.")
+
+            for conn in self.parent_conns:
+                conn.send('FIRST')
+            worker_results = [conn.recv() for conn in self.parent_conns]
+            room_results,  data, shm = zip(*[dataframe_from_shared(meta) for meta in worker_results])
+            solved_time = min(r.index[-1] for r in room_results)
+            print(solved_time)
             cumulative_room_results: Dict[RoomChemistry, pd.DataFrame] = dict(
                 [(r, room_results[i].copy()) for i, r in enumerate(self._rooms)])
 
-            # Use the aperture results to adjust the room results into the input for the next iteration
-            initial_condition = self._apply_wind(pool, solved_time, t_interval, room_results)
+            self._apply_wind(solved_time, t_interval, room_results)
 
-            # Loop of incrementing time by t_interval and performing the operations
-            # Stop when another increment would take it over the total
             while (solved_time+t_interval <= t_total):
 
-                # Use the initial conditions and solve for the next time interval  (performed in parallel)
-                room_results, solved_time = self._evolve_rooms(pool, solved_time, t_interval, initial_condition)
-                # Add the new results to the cumulative result for all times
-                cumulative_room_results = dict(
-                    [(r, pd.concat([cumulative_room_results[r], room_results[i]], axis=0)) for i, r in enumerate(self._rooms)])
+              for conn in self.parent_conns:
+                conn.send('STEP')
+              worker_results = [conn.recv() for conn in self.parent_conns]
+              room_results,  data, shm = zip(*[dataframe_from_shared(meta) for meta in worker_results])
+               # Add the new results to the cumulative result for all times
+              cumulative_room_results = dict(
+                  [(r, pd.concat([cumulative_room_results[r], room_results[i]], axis=0)) for i, r in enumerate(self._rooms)])
+              solved_time = min(r.index[-1] for r in room_results)
+              print(solved_time)
 
-                # Use the aperture results in adjust the room results into appropriate initial conditions for the next iteration
-                initial_condition = self._apply_wind(pool, solved_time, t_interval, room_results)
-
-            # Final step  if there is any time smaller than a single interval left to be solved
+              self._apply_wind(solved_time, t_interval, room_results)
+#
+#               # Use the aperture results in adjust the room results into appropriate initial conditions for the next iteration
+#               initial_condition = self._apply_wind(pool, solved_time, t_interval, room_results)
+#
+#           # Final step  if there is any time smaller than a single interval left to be solved
             if solved_time < t_total:
+              for conn in self.parent_conns:
+                conn.send('STEP')
+              worker_results = [conn.recv() for conn in self.parent_conns]
+              room_results,  data, shm = zip(*[dataframe_from_shared(meta) for meta in worker_results])
+               # Add the new results to the cumulative result for all times
+              cumulative_room_results = dict(
+                  [(r, pd.concat([cumulative_room_results[r], room_results[i]], axis=0)) for i, r in enumerate(self._rooms)])
+              solved_time = min(r.index[-1] for r in room_results)
+            
 
-                final_t_interval = t_total-solved_time
-
-                room_results, solved_time = self._evolve_rooms(pool, solved_time, final_t_interval, initial_condition)
-
-                # Add the new results to the cumulative result for all times
-                cumulative_room_results = dict(
-                    [(r, pd.concat([cumulative_room_results[r], room_results[i]], axis=0)) for i, r in enumerate(self._rooms)])
+        finally:
+            # Stop all workers
+            for conn in self.parent_conns:
+                conn.send('STOP')
+            for p in self.processes:
+                p.join()
+            for s in shm:
+                s.close()
+            print(f"\n[Main] All Workers stopped.")
 
         return cumulative_room_results
 
-    def _apply_wind(self, pool, t0, t_interval, room_results):
+#       with Pool(self._processes) as pool:
+#
+#           # First step
+#           # using the init_conditions, perform a solve on each room (performed in parallel)
+#           room_results, solved_time = self._evolve_rooms(pool, t0, t_interval, init_conditions, True)
+#
+#           # Cumulate the results for this step and others into a cumulative results dictionary
+#           cumulative_room_results: Dict[RoomChemistry, pd.DataFrame] = dict(
+#               [(r, room_results[i].copy()) for i, r in enumerate(self._rooms)])
+#
+#           # Use the aperture results to adjust the room results into the input for the next iteration
+#           initial_condition = self._apply_wind(pool, solved_time, t_interval, room_results)
+#
+#           # Loop of incrementing time by t_interval and performing the operations
+#           # Stop when another increment would take it over the total
+#           while (solved_time+t_interval <= t_total):
+#
+#               # Use the initial conditions and solve for the next time interval  (performed in parallel)
+#               room_results, solved_time = self._evolve_rooms(pool, solved_time, t_interval, initial_condition)
+#               # Add the new results to the cumulative result for all times
+#               cumulative_room_results = dict(
+#                   [(r, pd.concat([cumulative_room_results[r], room_results[i]], axis=0)) for i, r in enumerate(self._rooms)])
+#
+#               # Use the aperture results in adjust the room results into appropriate initial conditions for the next iteration
+#               initial_condition = self._apply_wind(pool, solved_time, t_interval, room_results)
+#
+#           # Final step  if there is any time smaller than a single interval left to be solved
+#           if solved_time < t_total:
+#
+#               final_t_interval = t_total-solved_time
+#
+#               room_results, solved_time = self._evolve_rooms(pool, solved_time, final_t_interval, initial_condition)
+#
+#               # Add the new results to the cumulative result for all times
+#               cumulative_room_results = dict(
+#                   [(r, pd.concat([cumulative_room_results[r], room_results[i]], axis=0)) for i, r in enumerate(self._rooms)])
+#
+#       return cumulative_room_results
+#
+    def _apply_wind(self, t0, t_interval, room_results):
         """
         Applies the effect of the wind, to alter the state of the rooms
         Uses the pool to calculate the impact of each aperture on the room concentrations
@@ -113,16 +192,16 @@ class Simulation:
         Return the new room concentrations
         """
         # Determine the properties of the wind at this time
-        wind_speed = self._wind_definition.wind_speed.value_at_time(t0)
-        wind_direction = self._wind_definition.wind_direction.value_at_time(t0)
-        wind_direction_in_radians = wind_direction if self._wind_definition.in_radians else math.radians(
-            wind_direction)
+        wind_speed = self._wind_definition.wind_speed.value_at_time(t0) if self._wind_definition else 0
+        wind_direction = self._wind_definition.wind_direction.value_at_time(t0) if self._wind_definition else 0
+        wind_direction_in_radians = (wind_direction if self._wind_definition.in_radians else math.radians(
+            wind_direction)) if self._wind_definition else 0
         # For each aperture  calculate a aperture result  (performed in parallel)
-        args = [(w, wind_speed, wind_direction_in_radians, t_interval, room_results, t0)
+
+        aperture_results = [self.run_aperture_calculation_starmap(w, wind_speed, wind_direction_in_radians, t_interval, room_results, t0)
                 for w in self._aperture_calculators]
-        aperture_results = pool.starmap(self.run_aperture_calculation_starmap, args)
         # Use the aperture results to adjust the room results into the input for the next iteration
-        return self.apply_aperture_results(room_results, aperture_results, t0)
+        self.apply_aperture_results(room_results, aperture_results, t0)
 
     def _evolve_rooms(self, pool, t0, t_interval, initial_condition, txt_file=False):
         """
@@ -174,21 +253,18 @@ class Simulation:
         Applies the effect of the aperture results, to alter the state of the rooms
         Return the new room concentrations at the final time
         """
-        # Make a new result from the current result the the solved time
-        result = [result.loc[[solved_time], :].astype(float) for result in room_results]
         # Go through all the aperture results
         for room_1_concentration_change, room_2_concentration_change, room1_index, room2_index in aperture_results:
             # Adjust the concentrations of room_1 int the new results
-            new_room_1_value = result[room1_index].loc[solved_time, :].add(
+            new_room_1_value = room_results[room1_index].loc[solved_time, :].add(
                 room_1_concentration_change, fill_value=0.0)
-            result[room1_index].loc[solved_time, :] = new_room_1_value
+            room_results[room1_index].loc[solved_time, :] = new_room_1_value
             # If there is a room 2, adjust the concentrations of room_2 int the new results
             if (room2_index is not None):
-                new_room_2_value = result[room2_index].loc[solved_time, :].add(
+                new_room_2_value = room_results[room2_index].loc[solved_time, :].add(
                     room_2_concentration_change, fill_value=0.0)
-                result[room2_index].loc[solved_time, :] = new_room_2_value
+                room_results[room2_index].loc[solved_time, :] = new_room_2_value
         # return the augmented results
-        return result
 
     @staticmethod
     def build_room_evolver_starmap(room, global_settings):
@@ -280,3 +356,62 @@ class Simulation:
                 room_2_volume)
             # For an indoor aperture, one concentration change per room is calculated
             return room_1_concentration_change, room_2_concentration_change, room1_index, room2_index
+
+
+    @staticmethod
+    def _worker(conn, room, global_settings, init_time, t_interval, t_total, init_text_file):
+        
+
+        print(f"[Worker PID {os.getpid()}] Starting...")
+        room_evolver = RoomInchemPyEvolver(room, global_settings)
+        conn.send('READY')
+        results = None
+        while True:
+            msg = conn.recv()
+            if msg == 'STOP':
+                print(f"[Worker PID {os.getpid()}] stop recieved...")
+                break
+            elif msg == 'FIRST':
+                df, _ = room_evolver.run(t0=init_time, seconds_to_integrate=t_interval, initial_text_file=init_text_file)
+                # Convert DataFrame values to NumPy array
+                data = df.astype(float).to_numpy()
+                # Create shared memory for values
+                shm = shared_memory.SharedMemory(create=True, size=data.nbytes)
+                shm_array = np.ndarray(data.shape, dtype=float, buffer=shm.buf)
+                shm_array[:] = data[:]
+                meta = {
+                    'shm_name': shm.name,
+                    'shape': data.shape,
+                    'dtype': str(data.dtype),
+                    'columns': df.columns.tolist(),
+                    'index': df.index.tolist()
+                }
+                conn.send(meta)
+                results = pd.DataFrame(shm_array, columns=meta['columns'], index=meta['index'])
+
+            elif msg == 'STEP':
+                last_time = results.index[-1]
+                delta_t = t_interval if last_time+t_interval < t_total else t_total-last_time
+                df, _ = room_evolver.run(t0=last_time, seconds_to_integrate=delta_t, initial_dataframe=results)
+                # Convert DataFrame values to NumPy array
+                data = df.astype(float).to_numpy()
+                shm_array = np.ndarray(data.shape, dtype=float, buffer=shm.buf)
+                shm_array[:] = data[:]
+                meta = {
+                    'shm_name': shm.name,
+                    'shape': data.shape,
+                    'dtype': str(data.dtype),
+                    'columns': df.columns.tolist(),
+                    'index': df.index.tolist()
+                }
+                conn.send(meta)
+                results = pd.DataFrame(shm_array, columns=meta['columns'], index=meta['index'])
+
+
+        print(f"[Worker PID {os.getpid()}] shutting stuff...")
+        shm.close()
+        shm.unlink()
+        print(f"[Worker PID {os.getpid()}] exiting...")
+
+
+    
