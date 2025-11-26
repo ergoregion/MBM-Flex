@@ -1,4 +1,5 @@
 import math
+import pickle
 from multiroom_model.global_settings import GlobalSettings
 from multiroom_model.simulation import Simulation
 from multiroom_model.room_factory import (
@@ -74,15 +75,15 @@ if __name__ == '__main__':
         global_settings=global_settings,
         rooms=rooms,
         apertures=apertures,
-        wind_definition=wind_definition,
-        processes=5)
+        wind_definition=wind_definition)
 
     # Select an initial conditions text file for each room
     # This lines uses the same file for all the rooms, but this could be different for the different rooms
     initial_conditions = dict((r, 'initial_concentrations.txt') for r in rooms)
 
-    # Run the simulation starting at t=0, for 25 seconds,
-    # interrupt the inchempy solver to apply the effects of windows every 6 seconds
+    # Run the simulation starting at time t0
+    # Run for a duration of t_total seconds
+    # interrupt the inchempy solver to apply the effects of windows every t_interval seconds
     result = simulation.run(
         t0=0,
         t_total=20,
@@ -90,9 +91,14 @@ if __name__ == '__main__':
         init_conditions=initial_conditions
     )
 
+    # Save to pickle file
+
+    results_as_dictionary = dict((f"Room {i+1}", result[r]) for i, r in enumerate(rooms))
+
+    pickle.dump(results_as_dictionary, open("./results.pkl", "wb"))
+
     # Make use of results here eg
     # plot tool
-    # Save to pickle file
 
     # Demo: Print one of the many results to the output
     room_of_interest = rooms_dictionary[1]
