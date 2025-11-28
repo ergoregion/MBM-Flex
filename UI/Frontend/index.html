@@ -1,100 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Multiple Draggable + Collapsible Panes</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Apertures and Rooms</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
 
-    <script>
-        // --- Utility function to create a new pane ---
-        function createPane(id, x, y, contentFile, script_file, title) {
-            const pane = document.createElement("div");
-            pane.classList.add("pane");
-            pane.style.left = x + "px";
-            pane.style.top = y + "px";
+<div id="toolbar">
+  <button onclick="addSquare('room')">Add Room</button>
+  <button onclick="addSquare('aperture')">Add Aperture</button>
+  <button onclick="enterLinkMode()">Link Rooms to Aperture</button>
+  <button onclick="saveLayout()">Save Layout</button>
+  <button onclick="document.getElementById('fileInput').click()">Load Layout</button>
+  <input type="file" id="fileInput" style="display: none" accept=".json" multiple />
+</div>
 
-            const header = document.createElement("div");
-            header.classList.add("header");
-            header.innerHTML = `<span>${title}</span>`;
+<div id="canvas-container">
+  <svg id="connection-lines"></svg>
+  <div id="canvas"></div>
+</div>
 
-            const toggleBtn = document.createElement("span");
-            toggleBtn.classList.add("toggleBtn");
-            toggleBtn.textContent = "▼";
-            header.appendChild(toggleBtn);
+<div id="json-editor-container">
+  <h3>Square JSON</h3>
+  <textarea id="json-editor" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()" oninput="event.stopPropagation()"></textarea>
+  <div id="json-error" style="display: none;">Invalid JSON!</div>
+</div>
 
-            const content = document.createElement("div");
-            content.classList.add("content");
-            content.textContent = "Loading...";
-
-            pane.appendChild(header);
-            pane.appendChild(content);
-            document.body.appendChild(pane);
-
-            // --- Load external content ---
-            fetch(contentFile)
-                .then(resp => resp.text())
-                .then(html => content.innerHTML = html)
-                .then(_ => {
-                    const script = document.createElement("script");
-                    script.src = script_file;
-                    document.body.appendChild(script);
-                })
-                .catch(err => content.innerHTML = "⚠️ Error loading " + contentFile);
-
-            // --- Drag logic ---
-            let offsetX, offsetY, isDragging = false;
-            header.addEventListener("mousedown", (e) => {
-                if (e.target === toggleBtn) return; // ignore toggle button clicks
-                isDragging = true;
-                offsetX = e.clientX - pane.offsetLeft;
-                offsetY = e.clientY - pane.offsetTop;
-                header.style.cursor = "grabbing";
-            });
-
-            document.addEventListener("mousemove", (e) => {
-                if (!isDragging) return;
-                pane.style.left = e.clientX - offsetX + "px";
-                pane.style.top = e.clientY - offsetY + "px";
-            });
-
-            document.addEventListener("mouseup", () => {
-                isDragging = false;
-                header.style.cursor = "grab";
-            });
-
-            // --- Collapse logic ---
-            let isCollapsed = false;
-            let fullHeight;
-
-            // Measure full height after content loads
-            setTimeout(() => fullHeight = pane.offsetHeight, 100);
-
-            toggleBtn.addEventListener("click", () => {
-                if (!isCollapsed) {
-                    fullHeight = pane.offsetHeight;
-                    pane.style.height = header.offsetHeight + "px";
-                    toggleBtn.textContent = "▲";
-                    isCollapsed = true;
-                } else {
-                    pane.style.height = fullHeight + "px";
-                    toggleBtn.textContent = "▼";
-                    isCollapsed = false;
-                }
-            });
-
-            return pane;
-        }
-
-        // --- Create multiple panes ---
-        createPane("pane1", 50, 50, "pane.html", "pane_script.js", "Pane 1");
-        createPane("pane2", 60, 60, "pane2.html", "pane_script2.js", "Pane 2");
-
-    </script>
+<script src="script.js"></script>
 
 </body>
-
 </html>
