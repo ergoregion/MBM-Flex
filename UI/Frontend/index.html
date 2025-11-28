@@ -1,34 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Apertures and Rooms</title>
-  <link rel="stylesheet" href="styles.css" />
+    <meta charset="UTF-8" />
+    <title>Room Layout Editor – Modular Version</title>
+    <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-<div id="toolbar">
-  <button onclick="addSquare('room')">Add Room</button>
-  <button onclick="addSquare('aperture')">Add Aperture</button>
-  <button onclick="enterLinkMode()">Link Rooms to Aperture</button>
-  <button onclick="saveLayout()">Save Layout</button>
-  <button onclick="document.getElementById('fileInput').click()">Load Layout</button>
-  <input type="file" id="fileInput" style="display: none" accept=".json" multiple />
-</div>
+    <!-- Toolbar -->
+    <div id="toolbar">
+        <button id="add-room">Add Room</button>
+        <button id="add-aperture">Add Aperture</button>
+        <button id="save-layout">Save Layout</button>
+        <label class="load-label">
+            Load Layout
+            <input id="fileInput" type="file" multiple style="display:none;">
+        </label>
+    </div>
 
-<div id="canvas-container">
-  <svg id="connection-lines"></svg>
-  <div id="canvas"></div>
-</div>
+    <!-- Link Mode Banner -->
+    <div id="link-mode-banner">Link Mode Active — Select two rooms, then click an aperture</div>
 
-<div id="json-editor-container">
-  <h3>Square JSON</h3>
-  <textarea id="json-editor" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()" oninput="event.stopPropagation()"></textarea>
-  <div id="json-error" style="display: none;">Invalid JSON!</div>
-</div>
+    <!-- Editor Layout -->
+    <div id="editor-container">
+        <div id="canvas-container">
+            <div id="canvas">
+                <!-- Dynamic squares go here -->
+            </div>
 
-<script src="script.js"></script>
+            <!-- SVG lines overlay -->
+            <svg id="connection-lines"></svg>
+        </div>
+
+        <!-- JSON Editor -->
+        <div id="json-editor-container">
+            <h3>Object Data</h3>
+            <textarea id="json-editor"></textarea>
+            <div id="json-error">Invalid JSON</div>
+        </div>
+    </div>
+
+    <!-- Main JS -->
+    <script type="module" src="js/main.js"></script>
 
 </body>
 </html>

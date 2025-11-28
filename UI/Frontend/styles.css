@@ -1,150 +1,173 @@
-sbody {
-  font-family: sans-serif;
-  margin: 0;
-  padding: 0;
+/* === Layout Base === */
+body {
+    margin: 0;
+    background: #f5f5f5;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
 }
 
-#json-editor-container {
-  z-index: 10;
-}
-
+/* === Toolbar === */
 #toolbar {
-  padding: 10px;
-  background: #f0f0f0;
-  border-bottom: 1px solid #ccc;
+    background: #333;
+    color: white;
+    padding: 10px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
 }
 
-button {
-  margin-right: 10px;
+#toolbar button, 
+#toolbar .load-label {
+    background: #555;
+    border: none;
+    padding: 8px 12px;
+    color: white;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background .2s;
+}
+
+#toolbar button:hover,
+#toolbar .load-label:hover {
+    background: #666;
+}
+
+.load-label {
+    display: inline-block;
+}
+
+/* === Link Mode Banner === */
+#link-mode-banner {
+    background: #ffc600;
+    color: #333;
+    padding: 10px;
+    text-align: center;
+    font-weight: bold;
+    display: none;
+}
+
+/* === Editor Layout === */
+#editor-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
 }
 
 #canvas-container {
-  position: relative;
-  width: 100vw;
-  height: 90vh;
-  overflow: hidden;
+    flex: 1;
+    position: relative;
+    overflow: auto;
+    background: #eaeaea;
 }
 
-/* Link lines go behind everything */
-#connection-lines {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Canvas sits above lines */
 #canvas {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
+    position: relative;
+    width: 2000px;
+    height: 1500px;
 }
 
-/* Squares shared styles */
+/* SVG Overlay */
+#connection-lines {
+    pointer-events: none;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+}
+
+/* === Squares === */
 .square {
-  position: absolute;
-  width: 100px;
-  height: 100px;
-  box-sizing: border-box;
-  border: 2px solid black;
-  cursor: pointer;
+    position: absolute;
+    border: 2px solid #333;
+    background: white;
+    box-shadow: 0px 2px 6px #0002;
+    border-radius: 4px;
+    cursor: move;
+    user-select: none;
 }
 
-/* Room in middle */
+.square.selected {
+    border-color: #2196f3;
+    box-shadow: 0 0 0 3px rgba(33,150,243,0.3);
+}
+
+/* Rooms */
 .square.room {
-  background-color: rgb(0, 128, 255);
-  z-index: 2;
+    background: #fff;
 }
 
-/* Aperture on top */
+/* Apertures */
 .square.aperture {
-  width: 30px;
-  height: 30px;
-  background-color: rgb(255, 128, 0);
-  z-index: 3;
+    width: 24px;
+    height: 24px;
+    background: #b6ffb6;
+    border-radius: 50%;
+    cursor: pointer;
 }
 
-.selected {
-  border: 2px dashed red;
+/* === Labels === */
+.label {
+    padding: 4px;
+    font-size: 14px;
+    text-align: center;
+    cursor: text;
 }
 
-.linked {
-  border-color: green;
-}
-
+/* === Resize Handle === */
 .resize-handle {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  background: red;
-  bottom: -5px;
-  right: -5px;
-  cursor: se-resize;
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    right: -6px;
+    bottom: -6px;
+    background: #2196f3;
+    border-radius: 50%;
+    cursor: se-resize;
+    border: 2px solid white;
 }
 
-.square:hover {
-  background-color: rgba(0, 0, 0, 0.05); /* subtle hover effect */
-}
-
-.square.room:hover {
-  background-color: rgba(0, 128, 255, 0.3);
-}
-
-.square.aperture:hover {
-  background-color: rgba(255, 128, 0, 0.3);
+/* === Connection Lines === */
+.connection-line {
+    stroke: #4caf50;
+    stroke-width: 2;
+    transition: stroke 0.1s;
 }
 
 .connection-line.highlight {
-  stroke: orange;
-  stroke-width: 6;
-}
-.label {
-  position: absolute;
-  width: 90%;
-  text-align: center;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: auto;
-  font-size: 14px;
-  user-select: none;
+    stroke: #ff5722;
+    stroke-width: 3;
 }
 
-.label[contenteditable] {
-  outline: none;
-  background: rgba(255, 255, 255, 0.5);
-  padding: 2px 4px;
-  border-radius: 3px;
-  cursor: text;
-}
-
+/* === JSON Editor === */
 #json-editor-container {
-  position: fixed; 
-  top: 50px; 
-  right: 0; 
-  width: 300px; 
-  height: calc(100vh - 50px); 
-  background: #f7f7f7; 
-  border-left: 1px solid #ccc; 
-  padding: 10px; 
-  box-sizing: border-box; 
-  display: none;
-  overflow: auto;
-  font-family: monospace;
+    width: 350px;
+    background: #fff;
+    border-left: 2px solid #ccc;
+    display: none;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+#json-editor-container h3 {
+    margin-top: 0;
 }
 
 #json-editor {
-  width: 100%; 
-  height: 80%; 
-  resize: none; 
-  font-family: monospace;
+    width: 100%;
+    height: 80%;
+    font-family: monospace;
+    font-size: 14px;
+    box-sizing: border-box;
 }
 
-
 #json-error {
-  color: red; 
-  margin-top: 5px; 
-  display: none;
+    display: none;
+    color: white;
+    background: #d32f2f;
+    padding: 5px;
+    margin-top: 8px;
+    border-radius: 4px;
 }
