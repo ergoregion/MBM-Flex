@@ -6,7 +6,7 @@ import { ApertureManager } from "./managers/ApertureManager.js";
 import { SelectionManager } from "./managers/SelectionManager.js";
 import { DragResizeManager } from "./managers/DragResizeManager.js";
 import { ConnectionRenderer } from "./managers/ConnectionRenderer.js";
-import { LayoutManager } from "./managers/LayoutManager.js";
+import { LoadSaveManager } from "./managers/LoadSaveManager.js";
 import { LinkModeManager } from "./managers/LinkModeManager.js";
 import { JsonEditor } from "./ui/JsonEditor.js";
 import { Toolbar } from "./ui/Toolbar.js";
@@ -104,8 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return el;
     }
 
-
-    const layoutManager = new LayoutManager(
+    const loadSaveManager = new LoadSaveManager(
         roomManager,
         apertureManager,
         createDomRoom,
@@ -124,10 +123,12 @@ document.addEventListener("DOMContentLoaded", () => {
         // link performed by clicking rooms + aperture
     };
 
-    document.getElementById("save-layout").onclick = () => layoutManager.save();
+    document.getElementById("save-layout").onclick = () => {
+        console.log("save clicked")
+        loadSaveManager.save()};
 
     document.getElementById("fileInput").addEventListener("change", async e => {
-        await layoutManager.load(e.target.files);
+        await loadSaveManager.load(e.target.files);
         renderer.update();
     });
 

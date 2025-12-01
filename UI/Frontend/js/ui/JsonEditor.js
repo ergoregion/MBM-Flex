@@ -33,9 +33,9 @@ export class JsonEditor {
 
         const id = el.dataset.id;
 
-        const obj = this.editor.value;
+        const txt = this.editor.value;
 
-        if (obj === null) {
+        if (true === null) {
             this.error.style.display = "block";
             return;
         }
@@ -43,8 +43,9 @@ export class JsonEditor {
         this.error.style.display = "none";
 
         if (State.rooms.has(id)) {
-            State.rooms.get(id).data = obj;
+            State.rooms.get(id).data = txt;
         } else if (State.apertures.has(id)) {
+            const obj = safeParseJSON(this.editor.value, null);
             if (obj.area) State.apertures.get(id).area = Number(obj.area);
         }
     }

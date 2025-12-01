@@ -6,6 +6,17 @@ import { Aperture } from "../objects/Aperture.js";
 
 export class ApertureManager {
 
+
+    createAperture(data) {
+
+        const id = generateId();
+        
+        const ap = new Aperture(data);
+
+        State.apertures.set(id, ap);
+        return ap;
+    }
+
     createApertureBetween(roomA, roomB, area = 1.0) {
 
         const id = generateId();
