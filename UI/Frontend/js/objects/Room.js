@@ -1,11 +1,12 @@
 // js/objects/Room.js
+import { defaultRoomText } from "../core/default_room_text.js";
 
 export class Room {
 
     constructor({ id, label, data, ui }) {
         this.id = id;
         this.label = label || `Room`;
-        this.data = data || `{}`;   // room JSON string
+        this.data = data || defaultRoomText();   // room JSON string
         this.ui = ui;             // UI metadata (position, size)
     }
 
