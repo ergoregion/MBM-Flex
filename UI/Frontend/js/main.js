@@ -35,6 +35,11 @@ document.addEventListener("DOMContentLoaded", () => {
         el.className = "square aperture";
         el.dataset.id = aperture.id;
 
+        if(aperture.grounded){
+            console.log("grounded text: "+ aperture.rooms[1][0])
+            el.textContent = aperture.rooms[1][0];
+        }
+
         el.style.left = aperture.ui.position.left + "px";
         el.style.top = aperture.ui.position.top + "px";
 
@@ -115,6 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     document.getElementById("add-aperture").onclick = () => {
+        selectionManager.clearSelection();
         linkModeManager.enableLinkMode();
         // link performed by clicking rooms + aperture
     };
@@ -129,6 +135,19 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("canvas").addEventListener("click", () => {
         selectionManager.clearSelection();
         linkModeManager.disableLinkMode()
+    });
+
+    document.getElementById("link-mode-banner-front").addEventListener("click", () => {
+        linkModeManager.linkClickBanner("Front")
+    });
+    document.getElementById("link-mode-banner-back").addEventListener("click", () => {
+        linkModeManager.linkClickBanner("Back")
+    });
+    document.getElementById("link-mode-banner-left").addEventListener("click", () => {
+        linkModeManager.linkClickBanner("Left")
+    });
+    document.getElementById("link-mode-banner-right").addEventListener("click", () => {
+        linkModeManager.linkClickBanner("Right")
     });
 
     renderer.update();

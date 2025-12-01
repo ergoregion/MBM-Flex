@@ -23,11 +23,20 @@ export class LinkModeManager {
         State.linkSelection.push(room)
 
         if(State.linkSelection.length == 2){
-            const room = this.apertureManager.createApertureBetween(State.linkSelection[0], State.linkSelection[1]);
-            this.createDomAperture(room);
+            const aperture = this.apertureManager.createApertureBetween(State.linkSelection[0], State.linkSelection[1]);
+            this.createDomAperture(aperture);
             this.disableLinkMode()
         }
 
+    }
+
+    
+    linkClickBanner(side){
+        if (!State.linkMode) return;
+        if (State.linkSelection.length != 1) return;
+        const aperture = this.apertureManager.createGroundedAperture(State.linkSelection[0], side);
+        this.createDomAperture(aperture);
+        this.disableLinkMode()
     }
     
     disableLinkMode() {

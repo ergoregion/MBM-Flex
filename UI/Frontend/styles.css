@@ -97,6 +97,7 @@ body {
 /* Rooms */
 .square.room {
     background: #fff;
+    z-index: 1;
 }
 
 /* Apertures */
@@ -106,6 +107,10 @@ body {
     background: #b6ffb6;
     border-radius: 50%;
     cursor: pointer;
+    padding: 4px;
+    font-size: 14px;
+    text-align: center;
+    z-index: 2;
 }
 
 /* === Labels === */
