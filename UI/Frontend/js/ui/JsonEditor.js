@@ -14,7 +14,7 @@ export class JsonEditor {
 
     showForRoom(room) {
         State.ui.jsonEditorContainer.style.display = "block";
-        this.editor.value = JSON.stringify(room.data, null, 2);
+        this.editor.value = room.data;
     }
 
     showForAperture(ap) {
@@ -33,7 +33,7 @@ export class JsonEditor {
 
         const id = el.dataset.id;
 
-        const obj = safeParseJSON(this.editor.value, null);
+        const obj = this.editor.value;
 
         if (obj === null) {
             this.error.style.display = "block";

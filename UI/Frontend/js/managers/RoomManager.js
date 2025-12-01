@@ -11,10 +11,12 @@ export class RoomManager {
     createRoom(initialData = {}) {
         const id = generateId();
 
+        State.rooms.size
+
         const room = new Room({
             id,
-            label: initialData.label || `Room`,
-            data: initialData.data || {},
+            label: initialData.label || (`Room ` + State.rooms.size),
+            data: initialData.data || `{}`,
             ui: initialData.ui || {
                 position: { left: 50, top: 50 },
                 size: { width: 120, height: 90 }
