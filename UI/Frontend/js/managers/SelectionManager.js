@@ -13,6 +13,7 @@ export class SelectionManager {
 
     selectElement(el) {
         this.clearSelection();
+        el.focus()
         el.classList.add("selected");
         State.selected = el;
     }

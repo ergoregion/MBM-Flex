@@ -36,7 +36,6 @@ document.addEventListener("DOMContentLoaded", () => {
         el.dataset.id = aperture.id;
 
         if(aperture.grounded){
-            console.log("grounded text: "+ aperture.rooms[1][0])
             el.textContent = aperture.rooms[1][0];
         }
 
@@ -91,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!e.target.classList.contains("resize-handle")) {
                 selectionManager.selectElement(el);
                 jsonEditor.showForRoom(room);
-                linkModeManager.linkRoom(room);
+                linkModeManager.linkRoom(room, el);
             }
         });
 
@@ -135,6 +134,17 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("canvas").addEventListener("click", () => {
         selectionManager.clearSelection();
         linkModeManager.disableLinkMode()
+    });
+
+    
+    document.addEventListener("keydown", (e) => {
+    if (e.key === "Delete") {
+        console.log("delete_pressed")
+    }
+    if (e.key === "Escape") {
+        selectionManager.clearSelection();
+        linkModeManager.disableLinkMode()
+    }
     });
 
     document.getElementById("link-mode-banner-front").addEventListener("click", () => {

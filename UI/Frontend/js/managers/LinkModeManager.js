@@ -13,14 +13,17 @@ export class LinkModeManager {
     enableLinkMode() {
         State.linkMode = true;
         State.linkSelection = [];
-        // UI polish: small banner instead of alert
         document.dispatchEvent(new CustomEvent("ui:linkModeOn"));
     }
 
-    linkRoom(room){
+    linkRoom(room, el){
         if (!State.linkMode) return;
         if (room in State.linkSelection) return;
         State.linkSelection.push(room)
+
+        
+        el.classList.add("linking");
+        State.linkingDOMElements.push(el);
 
         if(State.linkSelection.length == 2){
             const aperture = this.apertureManager.createApertureBetween(State.linkSelection[0], State.linkSelection[1]);
@@ -43,5 +46,10 @@ export class LinkModeManager {
         State.linkMode = false;
         State.linkSelection = [];
         document.dispatchEvent(new CustomEvent("ui:linkModeOff"));
+        
+        State.linkingDOMElements.forEach(element => {
+            element.classList.remove("linking");
+        }); 
+        State.linkingDOMElements = [];
     }
 }

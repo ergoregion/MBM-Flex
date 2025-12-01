@@ -94,6 +94,11 @@ body {
     box-shadow: 0 0 0 3px rgba(33,150,243,0.3);
 }
 
+.square.linking {
+    border-color: #ffc600;
+    box-shadow: 0 0 0 3px #ffc600;
+}
+
 /* Rooms */
 .square.room {
     background: #fff;

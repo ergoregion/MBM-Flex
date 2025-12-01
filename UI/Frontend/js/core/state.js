@@ -7,6 +7,7 @@ export const State = {
     selected: null,          // DOM element
     linkMode: false,
     linkSelection: [],       // room IDs selected for linking
+    linkingDOMElements: [],  // DOM elements involved in linking
 
     ui: {
         canvas: null,
