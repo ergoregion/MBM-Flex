@@ -2,6 +2,7 @@
 
 import { State } from "../core/state.js";
 import { safeParseJSON } from "../core/utils.js";
+import { JsonValidatorInterface } from "../interfaces/jsonValidatorInterface.js";
 
 export class JsonEditor {
 
@@ -10,6 +11,8 @@ export class JsonEditor {
         this.error = State.ui.jsonError;
 
         this.editor.addEventListener("input", () => this.onChange());
+
+        this.validator = new JsonValidatorInterface()
     }
 
     showForRoom(room) {
@@ -27,7 +30,7 @@ export class JsonEditor {
         State.ui.jsonEditorContainer.style.display = "none";
     }
 
-    onChange() {
+    async onChange() {
         const el = State.selected;
         if (!el) return;
 
@@ -35,10 +38,14 @@ export class JsonEditor {
 
         const txt = this.editor.value;
 
-        if (true === null) {
+        const validation = await this.validator.validateRoomData(txt)
+        console.log(validation)
+        if (!validation.success) {
             this.error.style.display = "block";
+            this.error.innerHTML = validation.message
             return;
         }
+
 
         this.error.style.display = "none";
 
