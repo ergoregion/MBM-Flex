@@ -7,9 +7,11 @@ export class ConnectionRenderer {
 
     update() {
         const svg = State.ui.connectionLayer;
+        const highlightSvg = State.ui.highlightedConnectionLayer;
         const canvas = State.ui.canvas;
 
         svg.innerHTML = "";
+        highlightSvg.innerHTML = "";
 
         const apertures = State.apertures;
 
@@ -45,11 +47,37 @@ export class ConnectionRenderer {
     }
 
     highlightFor(el, mode) {
+        const svg = State.ui.connectionLayer;
+        const highlightSvg = State.ui.highlightedConnectionLayer;
         const id = el.dataset.id;
 
         document.querySelectorAll(".connection-line").forEach(line => {
-            if (line.dataset.apertureId === id || line.dataset.roomId === id) {
+            if (line.dataset.apertureId === id) {
+                if(mode){
+                    highlightSvg.appendChild(line)
+                }
+                else{
+                    svg.appendChild(line);
+                }
+
                 line.classList.toggle("highlight", mode);
+            }
+        });
+    }
+    
+    transportModeFor(path, mode) {
+        const svg = State.ui.connectionLayer;
+        const highlightSvg = State.ui.highlightedConnectionLayer;
+        document.querySelectorAll(".connection-line").forEach(line => {
+            if (path.includes(line.dataset.apertureId)) {
+                if(mode){
+                    highlightSvg.appendChild(line)
+                }
+                else{
+                    svg.appendChild(line);
+                }
+
+                line.classList.toggle("transport", mode);
             }
         });
     }

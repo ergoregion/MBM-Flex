@@ -13,6 +13,7 @@ export const State = {
 
     ui: {
         canvas: null,
+        highlightedConnectionLayer: null,
         connectionLayer: null,
         jsonEditor: null,
         jsonEditorContainer: null,

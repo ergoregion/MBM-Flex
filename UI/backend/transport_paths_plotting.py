@@ -50,12 +50,11 @@ def paths(payload: InputModel):
         else:
             destination = MockRoom(name=a.destination)
             rooms[a.destination] = destination
-            
+
         apertures[a.id] = MockAperture(origin=origin, destination=destination, id=a.id)
 
     transport_paths = paths_through_building(rooms.values(), apertures.values())
 
     routes = [t.route for t in transport_paths]
     result = [[p.aperture.id for p in route] for route in routes]
-    print(result)
     return result

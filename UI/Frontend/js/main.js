@@ -18,6 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Setup UI refs
     State.ui.canvas = document.getElementById("canvas");
     State.ui.connectionLayer = document.getElementById("connection-lines");
+    State.ui.highlightedConnectionLayer = document.getElementById("highlighted-lines");
     State.ui.jsonEditorContainer = document.getElementById("json-editor-container");
     State.ui.jsonEditor = document.getElementById("json-editor");
     State.ui.jsonError = document.getElementById("json-error");
@@ -29,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const renderer = new ConnectionRenderer();
     const dragResizeManager = new DragResizeManager(renderer);
     const jsonEditor = new JsonEditor();
-    const transportPathManager= new TransportPathManager();
+    const transportPathManager= new TransportPathManager(renderer);
     const toolbar = new Toolbar();
 
     
@@ -96,10 +97,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 linkModeManager.linkRoom(room, el);
             }
         });
-
-        // hover highlight
-        el.addEventListener("mouseenter", () => renderer.highlightFor(el, true));
-        el.addEventListener("mouseleave", () => renderer.highlightFor(el, false));
 
         State.ui.canvas.appendChild(el);
         dragResizeManager.attach(el);

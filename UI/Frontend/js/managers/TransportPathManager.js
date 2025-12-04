@@ -1,6 +1,10 @@
 import { State } from "../core/state.js";
 
 export class TransportPathManager {
+    
+    constructor(connectionRenderer) {
+        this.renderer = connectionRenderer;
+    }
 
     getRoomLabel(roomId) {
         return State.rooms.get(roomId).label;
@@ -81,11 +85,7 @@ export class TransportPathManager {
     }
     
     highlightFor(path, mode) {
-        document.querySelectorAll(".connection-line").forEach(line => {
-            if (path.includes(line.dataset.apertureId)) {
-                line.classList.toggle("transport", mode);
-            }
-        });
+        this.renderer.transportModeFor(path, mode)
         document.querySelectorAll(".aperture").forEach(aperture => {
             console.log(aperture.dataset.id + " is in path: " +path.includes(aperture.dataset.id))
             if (path.includes(aperture.dataset.id)) {
