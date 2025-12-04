@@ -180,3 +180,37 @@ body {
     margin-top: 8px;
     border-radius: 4px;
 }
+
+
+#transport-path-list {
+    background: #fff;
+    border-left: 2px solid #ccc;
+    display: none;
+    padding: 10px;
+    box-sizing: border-box;
+    overflow-x: auto;
+    gap: 10px;
+}
+
+/* Tile styling */
+.tile {
+  width: 25px;
+  height: 25px;
+  background: #b6ffb6;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+/* Hover effect */
+.tile:hover {
+  background: #5a5aec;
+}
+
+.connection-line.transport {
+    stroke: #5a5aec;
+    stroke-width: 3;
+}
+
+.square.aperture.transport {
+    background: #5a5aec;
+}

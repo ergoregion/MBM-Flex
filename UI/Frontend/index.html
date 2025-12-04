@@ -11,6 +11,7 @@
     <div id="toolbar">
         <button id="add-room">Add Room</button>
         <button id="add-aperture">Add Aperture</button>
+        <button id="deduce-transport-paths">Show transport paths</button>
         <button id="save-layout">Save Layout</button>
         <label class="load-label">
             Load Layout
@@ -24,6 +25,10 @@
         <button id="link-mode-banner-back">Back</button>
         <button id="link-mode-banner-left">Left</button>
         <button id="link-mode-banner-right">Right</button></div>
+
+
+    <!-- list of detected transport paths -->
+    <div id="transport-path-list">Transport Paths:</div>
 
     <!-- Editor Layout -->
     <div id="editor-container">
@@ -42,6 +47,7 @@
             <textarea id="json-editor"></textarea>
             <div id="json-error">Invalid JSON</div>
         </div>
+        
     </div>
 
     <!-- Main JS -->

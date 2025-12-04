@@ -8,6 +8,7 @@ import { DragResizeManager } from "./managers/DragResizeManager.js";
 import { ConnectionRenderer } from "./managers/ConnectionRenderer.js";
 import { LoadSaveManager } from "./managers/LoadSaveManager.js";
 import { LinkModeManager } from "./managers/LinkModeManager.js";
+import { TransportPathManager } from "./managers/TransportPathManager.js";
 import { JsonEditor } from "./ui/JsonEditor.js";
 import { Toolbar } from "./ui/Toolbar.js";
 import {makeLabelEditable} from "./core/utils.js"
@@ -20,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
     State.ui.jsonEditorContainer = document.getElementById("json-editor-container");
     State.ui.jsonEditor = document.getElementById("json-editor");
     State.ui.jsonError = document.getElementById("json-error");
+    State.ui.tranportPathList = document.getElementById("transport-path-list")
 
     const roomManager = new RoomManager();
     const apertureManager = new ApertureManager();
@@ -27,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const renderer = new ConnectionRenderer();
     const dragResizeManager = new DragResizeManager(renderer);
     const jsonEditor = new JsonEditor();
+    const transportPathManager= new TransportPathManager();
     const toolbar = new Toolbar();
 
     
@@ -113,14 +116,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Toolbar buttons (assume you have elements with IDs)
     document.getElementById("add-room").onclick = () => {
+        selectionManager.clearSelection();
+        transportPathManager.end();
         const room = roomManager.createRoom({});
         createDomRoom(room);
     };
 
     document.getElementById("add-aperture").onclick = () => {
         selectionManager.clearSelection();
+        transportPathManager.end();
         linkModeManager.enableLinkMode();
         // link performed by clicking rooms + aperture
+    };
+
+    
+    document.getElementById("deduce-transport-paths").onclick = () => {
+        selectionManager.clearSelection();
+        linkModeManager.disableLinkMode();
+        transportPathManager.start();
     };
 
     document.getElementById("save-layout").onclick = () => {
@@ -135,6 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("canvas").addEventListener("click", () => {
         selectionManager.clearSelection();
         linkModeManager.disableLinkMode()
+        transportPathManager.end();
     });
 
     
@@ -144,7 +158,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (e.key === "Escape") {
         selectionManager.clearSelection();
-        linkModeManager.disableLinkMode()
+        linkModeManager.disableLinkMode();
+        transportPathManager.end();
     }
     });
 

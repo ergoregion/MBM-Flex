@@ -4,6 +4,7 @@ from pathlib import Path
 import socket
 from .result import router as result_router
 from .json_validators import router as json_validators_router
+from .transport_paths_plotting import router as transport_path_router
 from .running import router as running_router
 
 app = FastAPI()
@@ -12,6 +13,7 @@ app = FastAPI()
 app.include_router(result_router, prefix="/results")
 app.include_router(json_validators_router, prefix="/jsonvalidators")
 app.include_router(running_router, prefix="/run")
+app.include_router(transport_path_router, prefix="/transport")
 
 # Serve the frontend (HTML/JS)
 frontend_path = Path(__file__).parent.parent / "frontend"

@@ -9,11 +9,14 @@ export const State = {
     linkSelection: [],       // room IDs selected for linking
     linkingDOMElements: [],  // DOM elements involved in linking
 
+    transportPathMode: false,
+
     ui: {
         canvas: null,
         connectionLayer: null,
         jsonEditor: null,
         jsonEditorContainer: null,
         jsonError: null,
+        tranportPathList: null
     }
 };
