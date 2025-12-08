@@ -85,9 +85,6 @@ export class LoadSaveManager {
         const apertureData = master.apertures;
         const uiData = master.ui
         const hasUIData = uiData != null
-        if(hasUIData){
-            const uiApertureData= uiData.apertures
-        }
 
         const temp_rooms={}
         // 1. Rooms
@@ -108,14 +105,14 @@ export class LoadSaveManager {
             if (roomA && roomB) {
                 const aperture = this.apertureManager.createApertureBetween(roomA, roomB, ap.area);
                 if(hasUIData){
-                    aperture.ui = uiApertureData[i];
+                    aperture.ui = uiData.apertures[i];
                 }
                 this.createDomAperture(aperture);
             }
             else if (roomA) {
                 const aperture = this.apertureManager.createGroundedAperture(roomA, ap.destination, ap.area);
                 if(hasUIData){
-                    aperture.ui = uiApertureData[i];
+                    aperture.ui = uiData.apertures[i];
                 }
                 this.createDomAperture(aperture);
             }

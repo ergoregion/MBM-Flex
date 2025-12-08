@@ -30,7 +30,6 @@ export class TransportPathManager {
 
     end(){
         if (!State.transportPathMode) return;
-        console.log("leaving tp mode")
         State.transportPathMode = false;
         State.ui.tranportPathList.style.display = "none";
         State.ui.tranportPathList.innerHTML = 'Transport paths:';
@@ -40,7 +39,6 @@ export class TransportPathManager {
     highlightFor(path, mode) {
         this.renderer.transportModeFor(path, mode)
         document.querySelectorAll(".aperture").forEach(aperture => {
-            console.log(aperture.dataset.id + " is in path: " +path.includes(aperture.dataset.id))
             if (path.includes(aperture.dataset.id)) {
                 aperture.classList.toggle("transport", mode);
             }
