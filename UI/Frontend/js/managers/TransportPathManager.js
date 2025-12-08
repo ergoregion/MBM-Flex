@@ -5,7 +5,7 @@ export class TransportPathManager {
     
     constructor(connectionRenderer) {
         this.renderer = connectionRenderer;
-        this.transportPathDeductionInterface= TransportPathDeductionInterface()
+        this.transportPathDeductionInterface= new TransportPathDeductionInterface()
     }
 
 
