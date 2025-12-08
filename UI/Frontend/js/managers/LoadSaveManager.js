@@ -85,7 +85,6 @@ export class LoadSaveManager {
         const apertureData = master.apertures;
         const uiData = master.ui
         const hasUIData = uiData != null
-        console.log(hasUIData)
         if(hasUIData){
             const uiApertureData= uiData.apertures
         }
@@ -93,14 +92,9 @@ export class LoadSaveManager {
         const temp_rooms={}
         // 1. Rooms
         for (const [key, value] of Object.entries(roomData)) {
-            console.log(key)
-            console.log(value)
-            console.log(fileList)
             const file_name_only = value.substring(value.lastIndexOf('/')+1)
             const matchingFile =  [...fileList].find((f) => f.name === file_name_only);
-            console.log(matchingFile)
             const text =  matchingFile ? await matchingFile.text() : `{}`;
-            console.log(text)
             const roomUIData = hasUIData? uiData[key] : null;
             const room = this.roomManager.createRoom({label : key, data: text, ui:roomUIData});
             temp_rooms[key] = room;

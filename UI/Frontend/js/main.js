@@ -13,6 +13,10 @@ import { JsonEditor } from "./ui/JsonEditor.js";
 import { Toolbar } from "./ui/Toolbar.js";
 import {makeLabelEditable} from "./core/utils.js"
 
+window.onbeforeunload = function() {
+  return "Data will be lost if you leave the page, are you sure?";
+};
+
 document.addEventListener("DOMContentLoaded", () => {
 
     // Setup UI refs
@@ -140,6 +144,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("fileInput").addEventListener("change", async e => {
         await loadSaveManager.load(e.target.files);
         renderer.update();
+        // Allow selecting the same file again
+        e.target.value = ""
     });
 
     document.getElementById("canvas").addEventListener("click", () => {
@@ -174,4 +180,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     renderer.update();
+
+
 });
