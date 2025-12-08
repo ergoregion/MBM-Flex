@@ -84,15 +84,25 @@ export class LoadSaveManager {
         const roomData = master.rooms;
         const apertureData = master.apertures;
         const uiData = master.ui
-        const uiApertureData= uiData.apertures
+        const hasUIData = uiData != null
+        console.log(hasUIData)
+        if(hasUIData){
+            const uiApertureData= uiData.apertures
+        }
 
         const temp_rooms={}
         // 1. Rooms
         for (const [key, value] of Object.entries(roomData)) {
             console.log(key)
-            const matchingFile =  [...fileList].find((f) => f.name === value);
+            console.log(value)
+            console.log(fileList)
+            const file_name_only = value.substring(value.lastIndexOf('/')+1)
+            const matchingFile =  [...fileList].find((f) => f.name === file_name_only);
+            console.log(matchingFile)
             const text =  matchingFile ? await matchingFile.text() : `{}`;
-            const room = this.roomManager.createRoom({label : key, data: text, ui:uiData[key]});
+            console.log(text)
+            const roomUIData = hasUIData? uiData[key] : null;
+            const room = this.roomManager.createRoom({label : key, data: text, ui:roomUIData});
             temp_rooms[key] = room;
             this.createDomRoom(room);
         }
@@ -103,12 +113,16 @@ export class LoadSaveManager {
             const roomB = temp_rooms[ap.destination];
             if (roomA && roomB) {
                 const aperture = this.apertureManager.createApertureBetween(roomA, roomB, ap.area);
-                aperture.ui = uiApertureData[i];
+                if(hasUIData){
+                    aperture.ui = uiApertureData[i];
+                }
                 this.createDomAperture(aperture);
             }
             else if (roomA) {
                 const aperture = this.apertureManager.createGroundedAperture(roomA, ap.destination, ap.area);
-                aperture.ui = uiApertureData[i];
+                if(hasUIData){
+                    aperture.ui = uiApertureData[i];
+                }
                 this.createDomAperture(aperture);
             }
         };
