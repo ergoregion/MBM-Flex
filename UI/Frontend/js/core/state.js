@@ -10,6 +10,7 @@ export const State = {
     linkingDOMElements: [],  // DOM elements involved in linking
 
     transportPathMode: false,
+    resultsViewMode: false,
 
     ui: {
         canvas: null,
@@ -18,6 +19,7 @@ export const State = {
         jsonEditor: null,
         jsonEditorContainer: null,
         jsonError: null,
-        tranportPathList: null
+        tranportPathList: null,
+        resultsView: null
     }
 };

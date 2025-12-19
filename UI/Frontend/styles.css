@@ -18,7 +18,8 @@ body {
 }
 
 #toolbar button, 
-#toolbar .load-label {
+#toolbar .load-label, 
+#toolbar .view-results {
     background: #555;
     border: none;
     padding: 8px 12px;
@@ -29,11 +30,13 @@ body {
 }
 
 #toolbar button:hover,
-#toolbar .load-label:hover {
+#toolbar .load-label:hover, 
+#toolbar .view-results:hover {
     background: #666;
 }
 
-.load-label {
+.load-label,
+.view-results {
     display: inline-block;
 }
 
@@ -191,8 +194,18 @@ body {
     border-radius: 4px;
 }
 
-
 #transport-path-list {
+    background: #fff;
+    border-left: 2px solid #ccc;
+    display: none;
+    padding: 10px;
+    box-sizing: border-box;
+    overflow-x: auto;
+    gap: 10px;
+}
+
+
+#results-view {
     background: #fff;
     border-left: 2px solid #ccc;
     display: none;
