@@ -21,5 +21,13 @@ export const State = {
         jsonError: null,
         tranportPathList: null,
         resultsView: null
+    },
+    
+    results: {
+        gradientSelect: null,
+        speciesInput: null,
+        speciesList: null,
+        timeSlider: null,
+        timeLabel: null,
     }
 };

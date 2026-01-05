@@ -7,6 +7,7 @@ router = APIRouter()
 
 results = {}
 
+
 class InputModel(BaseModel):
     filename: str
 
@@ -17,6 +18,7 @@ def intersect(*d):
     for s in sets:
         result = result.intersection(s)
     return result
+
 
 @router.post("/load")
 async def load(file: UploadFile = File(...)):
@@ -36,6 +38,7 @@ async def load(file: UploadFile = File(...)):
         "intersecting_times": intersecting_times
     }
 
+
 @router.get("/check_species")
 async def check_species(species: str):
     global results
@@ -47,7 +50,20 @@ async def check_time(time: float):
     global results
     return dict((room, (time in data.index)) for room, data in results.items())
 
-@router.get("/view")
-async def view(species: str = "H2O", time: float = 0.0):
+
+@router.get("/range")
+async def range(species: str):
     global results
-    return dict((room, data[species][time]) for room, data in results.items())
+    return dict((room, (data[species].min(), data[species].max())) for room, data in results.items())
+
+
+@router.get("/values")
+async def values(species: str = "H2O", time: float = 0.0, last_value = True):
+    global results
+    location = -1 if last_value else 0
+    result_dict = {
+        room: (val.iloc[location] if isinstance(val := data[species][time], pd.Series) else val)
+        for room, data in results.items()
+    }
+    return result_dict
+

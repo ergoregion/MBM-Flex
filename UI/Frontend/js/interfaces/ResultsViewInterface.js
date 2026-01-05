@@ -12,12 +12,17 @@ export class ResultsViewInterface {
         });
 
         const result = await response.json();
-        console.log(result);
         return result;
     }
 
     async check_species(species) {
         const res = await fetch(`/results/check_species?species=${species}`);
+        const data = await res.json();
+        return data
+    }
+    
+    async range(species) {
+        const res = await fetch(`/results/range?species=${species}`);
         const data = await res.json();
         return data
     }
@@ -28,8 +33,8 @@ export class ResultsViewInterface {
         return data
     }
 
-    async view(species, time) {
-        const res = await fetch(`/results/view?species=${species}&&time=${time}`);
+    async values(species, time) {
+        const res = await fetch(`/results/values?species=${species}&&time=${time}`);
         const data = await res.json();
         return data
     }

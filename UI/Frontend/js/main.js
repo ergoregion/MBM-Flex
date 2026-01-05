@@ -30,6 +30,11 @@ document.addEventListener("DOMContentLoaded", () => {
     State.ui.tranportPathList = document.getElementById("transport-path-list")
     State.ui.resultsView = document.getElementById("results-view")
 
+    State.results.gradientSelect = document.getElementById("gradientSelect");
+    State.results.speciesInput = document.getElementById("speciesInput");
+    State.results.speciesList = document.getElementById("speciesList");
+    State.results.timeSlider = document.getElementById("timeSlider");
+    State.results.timeLabel = document.getElementById("timeLabel");
 
     const roomManager = new RoomManager();
     const apertureManager = new ApertureManager();
@@ -169,8 +174,11 @@ document.addEventListener("DOMContentLoaded", () => {
         selectionManager.clearSelection();
         linkModeManager.disableLinkMode()
         transportPathManager.end();
-        resultsViewManager.end();
     });
+
+    State.results.speciesInput.addEventListener("change", () => {resultsViewManager.select_species()});
+    State.results.timeSlider.addEventListener("input", () => {resultsViewManager.select_time()});
+    State.results.gradientSelect.addEventListener("change", () => {resultsViewManager.select_gradient()});
 
     
     document.addEventListener("keydown", (e) => {

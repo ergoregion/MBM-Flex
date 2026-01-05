@@ -35,7 +35,27 @@
     <div id="transport-path-list">Transport Paths:</div>
 
     <!-- view of results -->
-    <div id="results-view">Review Results:</div>
+    <div id="results-view" style="display:none; gap:12px; align-items:center;">
+        <label>Color Gradient:</label>
+        <select id="gradientSelect">
+            <option value="Ironbow">Ironbow</option>
+            <option value="Rainbow">Rainbow</option>
+            <option value="Blue-Red">Blue-Red</option>
+            <option value="Green-Yellow">Green-Yellow</option>
+            <option value="Purple-Orange">Purple-Orange</option>
+            <option value="Black-White">Black-White</option>
+        </select>
+
+        <label>Species:</label>
+        <input id="speciesInput" list="speciesList" placeholder="Enter species">
+        <datalist id="speciesList">
+            <option value="O3"></option>
+            <option value="CO"></option>
+        </datalist>
+
+        <label id="timeLabel">Time: 0</label>
+        <input id="timeSlider" type="range" min="0" max="1" step="1" value="0">
+    </div>
 
     <!-- Editor Layout -->
     <div id="editor-container">
