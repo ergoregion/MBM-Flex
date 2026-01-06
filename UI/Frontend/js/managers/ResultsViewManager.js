@@ -99,6 +99,8 @@ export class ResultsViewManager {
      * Updates the selected gradient and recolors rooms.
      */
     select_gradient() {
+        const gradientName = State.results.gradientSelect.value;
+        const colors = getGradientColors(gradientName);
         this.updateLegend(this.min, this.max, colors);
         this.updateNodeColors();
     }
@@ -223,7 +225,8 @@ function getGradientColors(name) {
         "Black-White": ["#000000", "#ffffff"],
         "Green-Yellow": ["#00ff00", "#ffff00"],
         "Purple-Orange": ["#800080", "#ffa500"],
-        "Ironbow": ["#000000", "#8b008b", "#ffa500", "#ffffff"]
+        "Ironbow": ["#000000", "#8b008b", "#ffa500", "#ffffff"],
+        "Viridis": ["#440154",  "#482777", "#3E4989", "#31688E", "#26828E", "#1F9E89", "#35B779", "#6CCE59", "#B4DE2C", "#FDE725"]
     };
     return gradients[name] || ["#808080"];
 }
