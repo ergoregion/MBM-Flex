@@ -30,7 +30,6 @@ export class ResultsViewManager {
      * Initializes the time slider and displays the results panel.
      */
     start(fileObject) {
-        if (State.resultsViewMode) return;
         State.resultsViewMode = true;
 
         const loadPromise = this.resultsViewInterface.load(fileObject);

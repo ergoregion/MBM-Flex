@@ -220,6 +220,10 @@ body {
     height: 15px;
 }
 
+#timeLabel {
+    flex: 0 0 90px; /* do not shrink, fixed width */
+}
+
 /* Tile styling */
 .tile {
   width: 25px;
