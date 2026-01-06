@@ -138,6 +138,18 @@ Loads:
 
 - UI metadata
 
+#### `ResultsViewManager`
+
+Prompts the backend to load a pickle file.
+
+Allows the selection of a
+
++ species 
++ time
++ colour scheme
+
+recolours the rooms based the the selection and the results called from the front end
+
 #### `JsonEditor`
 
 Shows and validates JSON for rooms and apertures.

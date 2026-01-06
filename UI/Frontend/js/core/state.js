@@ -23,7 +23,10 @@ export const State = {
     linkSelection: [],       // Room IDs selected during link mode
     linkingDOMElements: [],  // DOM elements visually marked as "linking"
 
-	resultsViewMode: false,
+    
+    // --- Results viewing state ---
+	resultsViewMode: false, // Whether the user is viewing results
+
     // --- Transport path mode ---
     transportPathMode: false, // Whether transport path visualization is active
 
@@ -39,10 +42,10 @@ export const State = {
     },
     
     results: {
-        gradientSelect: null,
-        speciesInput: null,
-        speciesList: null,
-        timeSlider: null,
-        timeLabel: null,
+        gradientSelect: null,   // Selection of the colour scheme
+        speciesInput: null,     // Select the species population to view
+        speciesList: null,      // List of the possible species to choose
+        timeSlider: null,       // Slider to choose the time to view
+        timeLabel: null,        // Label showing the time currently choosen
     }
 };

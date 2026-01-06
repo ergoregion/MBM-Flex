@@ -184,13 +184,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     document.getElementById("resultsFileInput").addEventListener("change", async e => {
-        console.log("changed to file " + e.target.files[0].name)
         selectionManager.clearSelection();
         linkModeManager.disableLinkMode();
         transportPathManager.end();
         resultsViewManager.start(e.target.files[0]);
-        // Allow selecting the same file again
-        e.target.value = ""
+        e.target.value = "";  // allow re-uploading same file
     });
 
     document.getElementById("canvas").addEventListener("click", () => {
@@ -199,12 +197,18 @@ document.addEventListener("DOMContentLoaded", () => {
         transportPathManager.end();
     });
 
+    
+    // ------------------------------------------------------------
+    // Changing the results viewed
+    // ------------------------------------------------------------
     State.results.speciesInput.addEventListener("change", () => {resultsViewManager.select_species()});
     State.results.timeSlider.addEventListener("input", () => {resultsViewManager.select_time()});
     State.results.gradientSelect.addEventListener("change", () => {resultsViewManager.select_gradient()});
 
 
+    // ------------------------------------------------------------
     // Keyboard shortcuts
+    // ------------------------------------------------------------
     document.addEventListener("keydown", (e) => {
         if (e.key === "Delete") {
             console.log("delete_pressed");
@@ -213,6 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
             selectionManager.clearSelection();
             linkModeManager.disableLinkMode();
             transportPathManager.end();
+            resultsViewManager.end();
         }
     });
 

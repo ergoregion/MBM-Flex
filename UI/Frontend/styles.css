@@ -215,6 +215,11 @@ body {
     gap: 10px;
 }
 
+.legend-gradient {
+    flex: 0 0 150px; /* do not shrink, fixed width */
+    height: 15px;
+}
+
 /* Tile styling */
 .tile {
   width: 25px;
