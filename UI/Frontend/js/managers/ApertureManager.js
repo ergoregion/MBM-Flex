@@ -37,17 +37,20 @@ export class ApertureManager {
     createApertureBetween(roomA, roomB, area = 1.0) {
 
         const id = generateId();
+        const aperture_graphic_diameter = 24;
 
-        // Compute midpoint between room centers (minus 12px offset for UI alignment)
+        // Compute midpoint between room centers (minus offset for the size of the aperture graphic)
         const l = (
             roomA.ui.position.left + roomA.ui.size.width / 2 +
-            roomB.ui.position.left + roomB.ui.size.width / 2
-        ) / 2 - 12;
+            roomB.ui.position.left + roomB.ui.size.width / 2 -
+            aperture_graphic_diameter
+        ) / 2;
 
         const t = (
             roomA.ui.position.top + roomA.ui.size.height / 2 +
-            roomB.ui.position.top + roomB.ui.size.height / 2
-        ) / 2 - 12;
+            roomB.ui.position.top + roomB.ui.size.height / 2 -
+            aperture_graphic_diameter
+        ) / 2;
 
         // Create aperture linking the two rooms
         const ap = new Aperture({
@@ -76,22 +79,23 @@ export class ApertureManager {
     createGroundedAperture(roomA, side, area = 1.0) {
 
         const id = generateId();
+        const aperture_graphic_diameter = 24;
 
         // Determine offset based on which side the aperture is grounded to.
         // These values align the aperture visually relative to the room's UI box.
         const top_delta =
-            side === "Front" ? roomA.ui.size.height + 12 :
-            side === "Back"  ? -24 :
+            side === "Front" ? roomA.ui.size.height :
+            side === "Back"  ? -aperture_graphic_diameter :
             roomA.ui.size.height / 2;
 
         const left_delta =
-            side === "Left"  ? -24 :
-            side === "Right" ? roomA.ui.size.width + 12 :
+            side === "Left"  ? -aperture_graphic_diameter :
+            side === "Right" ? roomA.ui.size.width :
             roomA.ui.size.width / 2;
 
         // Final UI position (centered with a -12px offset)
-        const l = roomA.ui.position.left + left_delta - 12;
-        const t = roomA.ui.position.top + top_delta - 12;
+        const l = roomA.ui.position.left + left_delta;
+        const t = roomA.ui.position.top + top_delta;
 
         // Create aperture linking the room to a "side" (treated like an external boundary)
         const ap = new Aperture({
