@@ -47,6 +47,7 @@ export class ResultsViewManager {
 
             // Show results panel
             State.ui.resultsView.style.display = "flex";
+            this.updateNodeColors();
         });
     }
 
