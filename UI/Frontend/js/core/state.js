@@ -1,23 +1,39 @@
-// js/core/state.js
-
+/**
+ * Global application state container.
+ * 
+ * This object holds all shared data structures used across managers,
+ * including:
+ *   - the logical model (rooms, apertures)
+ *   - UI mode flags (selection, linking, transport paths)
+ *   - references to key DOM elements
+ *
+ * All managers read/write from this central state to stay in sync.
+ */
 export const State = {
+
+    // --- Core data model ---
     rooms: new Map(),        // id → Room instance
     apertures: new Map(),    // id → Aperture instance
 
-    selected: null,          // DOM element
-    linkMode: false,
-    linkSelection: [],       // room IDs selected for linking
-    linkingDOMElements: [],  // DOM elements involved in linking
+    // --- Selection state ---
+    selected: null,          // Currently selected DOM element (room or aperture)
 
-    transportPathMode: false,
+    // --- Link mode state ---
+    linkMode: false,         // Whether the user is creating a connection
+    linkSelection: [],       // Room IDs selected during link mode
+    linkingDOMElements: [],  // DOM elements visually marked as "linking"
 
+    // --- Transport path mode ---
+    transportPathMode: false, // Whether transport path visualization is active
+
+    // --- UI element references ---
     ui: {
-        canvas: null,
-        highlightedConnectionLayer: null,
-        connectionLayer: null,
-        jsonEditor: null,
-        jsonEditorContainer: null,
-        jsonError: null,
-        tranportPathList: null
+        canvas: null,                     // Main layout container
+        highlightedConnectionLayer: null, // SVG layer for highlighted lines
+        connectionLayer: null,            // SVG layer for normal lines
+        jsonEditor: null,                 // JSON editor textarea
+        jsonEditorContainer: null,        // Container for the editor panel
+        jsonError: null,                  // Error display for JSON validation
+        tranportPathList: null            // UI list of transport paths
     }
 };
