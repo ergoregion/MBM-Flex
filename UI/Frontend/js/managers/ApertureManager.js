@@ -42,14 +42,12 @@ export class ApertureManager {
         // Compute midpoint between room centers (minus offset for the size of the aperture graphic)
         const l = (
             roomA.ui.position.left + roomA.ui.size.width / 2 +
-            roomB.ui.position.left + roomB.ui.size.width / 2 -
-            aperture_graphic_diameter
+            roomB.ui.position.left + roomB.ui.size.width / 2 
         ) / 2;
 
         const t = (
             roomA.ui.position.top + roomA.ui.size.height / 2 +
-            roomB.ui.position.top + roomB.ui.size.height / 2 -
-            aperture_graphic_diameter
+            roomB.ui.position.top + roomB.ui.size.height / 2 
         ) / 2;
 
         // Create aperture linking the two rooms
@@ -79,18 +77,18 @@ export class ApertureManager {
     createGroundedAperture(roomA, side, area = 1.0) {
 
         const id = generateId();
-        const aperture_graphic_diameter = 24;
+        const aperture_graphic_radius = 12;
 
         // Determine offset based on which side the aperture is grounded to.
         // These values align the aperture visually relative to the room's UI box.
         const top_delta =
-            side === "Front" ? roomA.ui.size.height :
-            side === "Back"  ? -aperture_graphic_diameter :
+            side === "Front" ? roomA.ui.size.height+aperture_graphic_radius :
+            side === "Back"  ? -aperture_graphic_radius :
             roomA.ui.size.height / 2;
 
         const left_delta =
-            side === "Left"  ? -aperture_graphic_diameter :
-            side === "Right" ? roomA.ui.size.width :
+            side === "Left"  ? -aperture_graphic_radius :
+            side === "Right" ? roomA.ui.size.width+aperture_graphic_radius :
             roomA.ui.size.width / 2;
 
         // Final UI position (centered with a -12px offset)
