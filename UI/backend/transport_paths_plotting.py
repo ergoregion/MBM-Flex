@@ -1,66 +1,25 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
+from collections import namedtuple
 from multiroom_model.transport_paths import paths_through_building, Side
 from typing import List
 
 router = APIRouter()
 
 
+# Pydantic models to act as FastAPI request payloads
 class InputAperture(BaseModel):
-    """
-    Represents a single aperture sent from the frontend.
-
-    Attributes
-    ----------
-    origin : str
-        Label of the room where the aperture begins.
-    destination : str
-        Label of the room or outside direction ("Front", "Back", etc.).
-    id : str
-        Unique aperture identifier (matches frontend aperture.id).
-    """
     origin: str
     destination: str
     id: str
-
-
 class InputModel(BaseModel):
-    """
-    Request body for the /paths endpoint.
-
-    Attributes
-    ----------
-    apertures : List[InputAperture]
-        List of all apertures in the current layout.
-    """
     apertures: List[InputAperture]
 
 
-class MockRoom:
-    """
-    Lightweight stand-in for the real Room model.
-
-    The transport-path solver only needs a `.name` attribute,
-    so we avoid importing the full room model and keep this endpoint
-    decoupled from the rest of the backend.
-    """
-    def __init__(self, name: str):
-        self.name = name
-
-
-class MockAperture:
-    """
-    Lightweight stand-in for the real Aperture model.
-
-    The solver only requires:
-      - origin (Room or Side)
-      - destination (Room or Side)
-      - id (identifier used to return results)
-    """
-    def __init__(self, origin, destination, id: str):
-        self.origin = origin
-        self.destination = destination
-        self.id = id
+# Mock rooms and apertures
+# Importing the full Room/Aperture classes are surplus if we only generate transport paths
+MockRoom = namedtuple("MockRoom", ["name"])
+MockAperture = namedtuple("MockAperture", ["origin", "destination", "id"])
 
 
 # Mapping of outside labels to the solver's Side enum

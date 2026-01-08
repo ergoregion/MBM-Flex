@@ -119,12 +119,11 @@ async def range(species: str):
     """
     global results
 
-    
     def result(data):
         if species not in data.keys():
             return (None, None)
         return (data[species].min(), data[species].max())
-    
+
     return {
         room: result(data)
         for room, data in results.items()
@@ -133,8 +132,8 @@ async def range(species: str):
 
 @router.get("/values")
 async def values(
-    species: str = "H2O",
-    time: float = 0.0,
+    species: str,
+    time: float,
     last_value: bool = True
 ):
     """
