@@ -1,7 +1,7 @@
 # Layout Editor – Architecture Overview
 
 This project is a browser‑based layout editor for creating rooms, apertures, and transport paths.
-It combines a simple data model with a set of modular managers that coordinate UI behavior, state updates, and backend communication.
+It combines a simple data model with a set of modular managers that coordinate UI behaviour, state updates, and backend communication.
 
 The system is intentionally lightweight: no frameworks, no build step — just clean JavaScript modules and a shared global state.
 
@@ -9,37 +9,29 @@ The system is intentionally lightweight: no frameworks, no build step — just c
 
 ### Rooms
 
-- Represent physical spaces.
-
-- Have editable JSON data.
-
-- Have UI metadata (position + size).
-
-- Can be dragged, resized, renamed.
++ Represent physical spaces.
++ Have editable JSON data.
++ Have UI metadata (position + size).
++ Can be dragged, resized, renamed.
 
 ### Apertures
 
-- Represent openings between rooms or between a room and the outside.
-
-- Can be created by linking two rooms or linking a room to a side (Front/Back/Left/Right).
-
-- Have an editable `area` property.
++ Represent openings between rooms or between a room and the outside.
++ Can be created by linking two rooms or linking a room to a side (Front/Back/Left/Right).
++ Have an editable `area` property.
 
 ### Transport Paths
 
-- Computed by the backend from the aperture graph.
-
-- Visualized as highlightable paths through the layout.
++ Computed by the backend from the aperture graph.
++ Visualized as highlightable paths through the layout.
 
 ## Architecture Summary
 
 The system is built around a central `State` object that stores:
 
-- All rooms and apertures
-
-- UI mode flags (selection, link mode, transport mode)
-
-- References to key DOM elements
++ All rooms and apertures
++ UI mode flags (selection, link mode, transport mode)
++ References to key DOM elements
 
 Everything else is a manager that reads/writes to this shared state.
 
@@ -50,15 +42,11 @@ Everything else is a manager that reads/writes to this shared state.
 `State`
 A global container holding:
 
-- `rooms`, `apertures`
-
-- selection state
-
-- link mode state
-
-- transport path mode
-
-- UI references (canvas, layers, editor, etc.)
++ `rooms`, `apertures`
++ selection state
++ link mode state
++ transport path mode
++ UI references (canvas, layers, editor, etc.)
 
 This is the backbone of the entire application.
 
@@ -67,14 +55,14 @@ This is the backbone of the entire application.
 `Room`
 Stores label, JSON data, and UI metadata.
 
-Provides setPosition, setSize, and serialize.
+Provides setPosition, setSize, and serialization.
 
 `Aperture`
 Stores area, connected rooms, grounded flag, and UI metadata.
 
-Provides serialize.
+Provides serialization.
 
-### Managers (Behavior Controllers)
+### Managers (Behaviour Controllers)
 
 #### `RoomManager`
 
@@ -126,17 +114,14 @@ Highlights apertures and lines on hover.
 
 Saves:
 
-- individual room files
-
-- a master layout file
++ individual room files
++ a master layout file
 
 Loads:
 
-- room files
-
-- apertures
-
-- UI metadata
++ room files
++ apertures
++ UI metadata
 
 #### `ResultsViewManager`
 
@@ -164,37 +149,37 @@ Shows/hides the link mode banner.
 
 #### User adds a room
 
-- RoomManager creates room
-- DOM element created
-- DragResizeManager attaches behavior
-- Renderer updates connections
++ RoomManager creates room
++ DOM element created
++ DragResizeManager attaches behaviour
++ Renderer updates connections
 
 #### User links two rooms
 
-- LinkModeManager tracks selections
-- ApertureManager creates aperture
-- DOM element created
-- Renderer draws connection line
++ LinkModeManager tracks selections
++ ApertureManager creates aperture
++ DOM element created
++ Renderer draws connection line
 
 #### User edits JSON
 
-- JsonEditor validates
-- Updates Room/Aperture data
-- Renderer updates if needed
++ JsonEditor validates
++ Updates Room/Aperture data
++ Renderer updates if needed
 
 #### User requests transport paths
 
-- TransportPathManager sends aperture graph
-- Backend returns paths
-- UI shows path tiles
-- Hovering highlights apertures and lines
++ TransportPathManager sends aperture graph
++ Backend returns paths
++ UI shows path tiles
++ Hovering highlights apertures and lines
 
 #### User saves layout
 
-- LoadSaveManager exports room files and master file
++ LoadSaveManager exports room files and master file
 
 #### User loads layout
 
-- LoadSaveManager reconstructs rooms and apertures
-- DOM recreated
-- Renderer updates
++ LoadSaveManager reconstructs rooms and apertures
++ DOM recreated
++ Renderer updates
