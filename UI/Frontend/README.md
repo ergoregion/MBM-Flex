@@ -142,7 +142,7 @@ Loads:
 
 Prompts the backend to load a pickle file.
 
-Allows the selection of a
+Allows the selection of
 
 + species 
 + time
@@ -164,7 +164,7 @@ Shows/hides the link mode banner.
 
 #### User adds a room
 
-- RoomManager creates it
+- RoomManager creates room
 - DOM element created
 - DragResizeManager attaches behavior
 - Renderer updates connections
@@ -187,14 +187,14 @@ Shows/hides the link mode banner.
 - TransportPathManager sends aperture graph
 - Backend returns paths
 - UI shows path tiles
-- Hovering highlights apertures + lines
+- Hovering highlights apertures and lines
 
 #### User saves layout
 
-- LoadSaveManager exports room files + master file
+- LoadSaveManager exports room files and master file
 
 #### User loads layout
 
-- LoadSaveManager reconstructs rooms + apertures
+- LoadSaveManager reconstructs rooms and apertures
 - DOM recreated
 - Renderer updates
