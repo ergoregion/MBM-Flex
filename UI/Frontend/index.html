@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Room Layout Editor</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+    <!-- Toolbar -->
+    <div id="toolbar">
+        <button id="add-room">Add Room</button>
+        <button id="add-aperture">Add Aperture</button>
+        <button id="deduce-transport-paths">Show transport paths</button>
+        <button id="save-layout">Save Layout</button>
+        <label class="load-label">
+            Load Layout
+            <input id="fileInput" type="file" multiple style="display:none;">
+        </label>
+        <label class="view-results">
+            Review results
+            <input id="resultsFileInput" type="file" style="display:none;">
+        </label>
+    </div>
+
+    <!-- Link Mode Banner -->
+    <div id="link-mode-banner">Aperture — Select two rooms or one room then a ground:
+        <button id="link-mode-banner-front">Front</button>
+        <button id="link-mode-banner-back">Back</button>
+        <button id="link-mode-banner-left">Left</button>
+        <button id="link-mode-banner-right">Right</button></div>
+
+
+    <!-- list of detected transport paths -->
+    <div id="transport-path-list">Transport Paths:</div>
+
+    <!-- view of results -->
+    <div id="results-view" style="display:none; gap:12px; align-items:center;">
+        <label>Color Gradient:</label>
+        <select id="gradientSelect">
+            <option value="Viridis">Viridis</option>
+            <option value="Ironbow">Ironbow</option>
+            <option value="Rainbow">Rainbow</option>
+            <option value="Blue-Red">Blue-Red</option>
+            <option value="Green-Yellow">Green-Yellow</option>
+            <option value="Purple-Orange">Purple-Orange</option>
+            <option value="Black-White">Black-White</option>
+        </select>
+
+        <label>Species:</label>
+        <input id="speciesInput" list="speciesList" placeholder="Enter species">
+        <datalist id="speciesList">
+            <option value="O3"></option>
+            <option value="CO"></option>
+        </datalist>
+
+        <label id="timeLabel">Time: 0</label>
+        <input id="timeSlider" type="range" min="0" max="1" step="1" value="0">
+
+        <div class="legend-min"></div>
+        <div class="legend-gradient"></div>
+        <div class="legend-max"></div>
+
+    </div>
+
+    <!-- Editor Layout -->
+    <div id="editor-container">
+        <div id="canvas-container">
+            <div id="canvas">
+                <!-- Dynamic squares go here -->
+            </div>
+
+            <!-- SVG lines overlay -->
+            <svg id="highlighted-lines"></svg>
+            <svg id="connection-lines"></svg>
+        </div>
+
+        <!-- JSON Editor -->
+        <div id="json-editor-container">
+            <h3>Object Data</h3>
+            <textarea id="json-editor"></textarea>
+            <div id="json-error">Invalid JSON</div>
+        </div>
+        
+    </div>
+
+    <!-- Main JS -->
+    <script type="module" src="js/main.js"></script>
+
+</body>
+</html>
